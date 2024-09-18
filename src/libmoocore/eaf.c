@@ -128,7 +128,7 @@ eaf_store_point_help (eaf_t * eaf, int nobj,
     if (eaf->size == eaf->maxsize) {
         eaf_assert (eaf->size < INT_MAX / 2);
         //size_t old_maxsize = eaf->maxsize;
-        eaf->maxsize = (size_t) (eaf->maxsize * (1.0 + 1.0 / pow(2, eaf->nreallocs / 4.0)));
+        eaf->maxsize = (size_t) ((double) eaf->maxsize * (1.0 + 1.0 / pow(2, eaf->nreallocs / 4.0)));
         eaf->maxsize += 100; // At least we increase it by 100 points
         /* fprintf(stderr,"maxsize (%d): %ld -> %ld\n", eaf->nreallocs, */
         /*         old_maxsize, eaf->maxsize); */
@@ -224,9 +224,9 @@ eaf2matrix_R (double *rmat, eaf_t * const * eaf, int nobj, int totalpoints,
 {
     int pos = 0;
     for (int k = 0; k < nlevels; k++) {
-        int npoints = eaf[k]->size;
+        size_t npoints = eaf[k]->size;
         double p = percentile ? percentile[k] : level2percentile(k+1, nlevels);
-        for (int i = 0; i < npoints; i++) {
+        for (size_t i = 0; i < npoints; i++) {
             for (int j = 0; j < nobj; j++) {
                 rmat[pos + j * totalpoints] = eaf[k]->data[j + i * nobj];
             }
@@ -243,9 +243,9 @@ eaf2matrix (double *rmat, eaf_t * const * eaf, int nobj, _no_warn_unused int tot
     int pos = 0;
     int ncol = nobj + 1;
     for (int k = 0; k < nlevels; k++) {
-        int npoints = eaf[k]->size;
+        size_t npoints = eaf[k]->size;
         double p = percentile ? percentile[k] : level2percentile(k+1, nlevels);
-        for (int i = 0; i < npoints; i++) {
+        for (size_t i = 0; i < npoints; i++) {
             for (int j = 0; j < nobj; j++) {
                 rmat[j + pos * ncol] = eaf[k]->data[j + i * nobj];
             }
@@ -450,7 +450,7 @@ eaf_max_size(eaf_t * const * eaf, int nlevels)
         if (max_size < eaf[a]->size)
             max_size = eaf[a]->size;
     }
-    return max_size;
+    return (int) max_size;
 }
 
 static int
@@ -621,7 +621,7 @@ eaf_compute_polygon (eaf_t **eaf, int nobj, int nlevels)
                 POLY_SIZE_CHECK(); EXPENSIVE_CHECK_POLYGONS();                 \
             } while(0)
 
-    int _poly_size_check = 0;
+    int _no_warn_unused _poly_size_check = 0;
     int nruns = eaf[0]->nruns;
 
     eaf_assert(nruns % 2 == 0);
@@ -636,8 +636,8 @@ eaf_compute_polygon (eaf_t **eaf, int nobj, int nlevels)
 
     for (int b = 1; b < nlevels; b++) {
         const int a = b - 1;
-        const int eaf_a_size = eaf[a]->size;
-        const int eaf_b_size = eaf[b]->size;
+        const int eaf_a_size = (int) eaf[a]->size;
+        const int eaf_b_size = (int) eaf[b]->size;
         init_colors(color, eaf[a], eaf_a_size, nruns);
 
         /* Find color transitions along the EAF level set.  */
@@ -811,7 +811,7 @@ eaf_compute_polygon (eaf_t **eaf, int nobj, int nlevels)
 eaf_polygon_t *
 eaf_compute_polygon_old (eaf_t **eaf, int nobj, int nlevels)
 {
-    int _poly_size_check = 0;
+    int _no_warn_unused _poly_size_check = 0;
     eaf_polygon_t * polygon;
 
     int *color;
@@ -827,8 +827,8 @@ eaf_compute_polygon_old (eaf_t **eaf, int nobj, int nlevels)
 
     for (int b = 1; b < nlevels; b++) {
         const int a = b - 1;
-        int eaf_a_size = eaf[a]->size;
-        int eaf_b_size = eaf[a + 1]->size;
+        const int eaf_a_size = (int) eaf[a]->size;
+        const int eaf_b_size = (int) eaf[a + 1]->size;
         init_colors(color, eaf[a], eaf_a_size, nruns);
         /* Find color transitions along the EAF level set.  */
         int last_b = -1;
@@ -1005,8 +1005,8 @@ eaf_compute_rectangles (eaf_t **eaf, int nobj, int nlevels)
 
     for (int b = 1; b < nlevels; b++) {
         const int a = b - 1;
-        const int eaf_a_size = eaf[a]->size;
-        const int eaf_b_size = eaf[b]->size;
+        const int eaf_a_size = (int) eaf[a]->size;
+        const int eaf_b_size = (int) eaf[b]->size;
         if (eaf_a_size == 0 || eaf_b_size == 0) continue;
 
         // FIXME: Skip points with color 0?

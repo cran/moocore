@@ -26,10 +26,12 @@ extern char *program_invocation_short_name;
 
 static void version(void)
 {
-    printf("%s version " VERSION
 #ifdef MARCH
-           " (optimised for "MARCH")"
+#define OPTIMISED_FOR_STR " (optimised for "MARCH")"
+#else
+#define OPTIMISED_FOR_STR ""
 #endif
+    printf("%s version " VERSION OPTIMISED_FOR_STR
            "\n\n", program_invocation_short_name);
     printf(
 "Copyright (C) " CMDLINE_COPYRIGHT_YEARS "\n" CMDLINE_AUTHORS "\n"
@@ -96,7 +98,7 @@ read_reference_set (double **reference_p, const char *filename, int *nobj_p)
 
 static inline char * m_strcat(const char * a, const char * b)
 {
-    int dest_len = strlen(a) + strlen(b) + 1;
+    size_t dest_len = strlen(a) + strlen(b) + 1;
     char *dest = malloc (sizeof(char) * dest_len);
     if (dest == NULL) return NULL;
     strcpy (dest, a);

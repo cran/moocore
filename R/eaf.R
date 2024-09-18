@@ -3,7 +3,7 @@
 #' This function computes the EAF given a set of 2D or 3D points and a vector `set`
 #' that indicates to which set each point belongs.
 #'
-#' @param x `matrix`|`data.frame`\cr Matrix or data frame of numerical
+#' @param x `matrix()`|`data.frame()`\cr Matrix or data frame of numerical
 #'   values, where each row gives the coordinates of a point. If `sets` is
 #'   missing, the last column of `x` gives the sets.
 #'
@@ -65,8 +65,7 @@ eaf <- function (x, sets, percentiles = NULL, maximise = FALSE, groups = NULL)
 
   x <- as_double_matrix(x)
   maximise <- as.logical(maximise)
-  if (any(maximise))
-    x <- transform_maximise(x, maximise)
+  x <- transform_maximise(x, maximise)
 
   if (!is.null(percentiles)) {
     # FIXME: We should handle only integral levels inside the C code.

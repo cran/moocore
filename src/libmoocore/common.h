@@ -27,23 +27,27 @@ void warnprintf(const char *format,...)  __attribute__ ((format(printf, 1, 2)));
 #define eaf_assert(X) assert(X)
 
 #if __GNUC__ >= 3
-#define MAX(x,y) __extension__({                        \
-            __typeof__(x) _x__ = (x);                   \
-            __typeof__(y) _y__ = (y);                   \
-            _x__ > _y__ ? _x__ : _y__; })
-#define MIN(x,y) __extension__({                        \
-            __typeof__(x) _x__ = (x);                   \
-            __typeof__(y) _y__ = (y);                   \
-            _x__ < _y__ ? _x__ : _y__; })
+#define __cmp_op_min <
+#define __cmp_op_max >
+#define __cmp(op, x, y) ((x) __cmp_op_##op (y) ? (x) : (y))
+#define __careful_cmp(op, x, y) __extension__({       \
+            __auto_type _x__ = (x);                   \
+            __auto_type _y__ = (y);                   \
+            (void) (&_x__ == &_y__);                  \
+            __cmp(op, _x__, _y__); })
+
+#define MAX(x,y) __careful_cmp(max, x, y)
+#define MIN(x,y) __careful_cmp(min, x, y)
+
 #define CLAMP(x, xmin, xmax) __extension__({                                   \
-            __typeof__(x) _x__ = (x);                                          \
-            __typeof__(x) _xmin__ = (xmin);                                    \
-            __typeof__(x) _xmax__ = (xmax);                                    \
-            _x__ < _xmin__ ? _xmin__ : _x__ > _xmax__ ? _xmax__ : _x__; })
+            __auto_type _x__ = (x);                                            \
+            __typeof__(_x__) _xmin__ = (xmin);                                 \
+            __typeof__(_x__) _xmax__ = (xmax);                                 \
+            _x__ <= _xmin__ ? _xmin__ : _x__ >= _xmax__ ? _xmax__ : _x__; })
 #else
 #define MAX(x,y) ((x) > (y) ? (x) : (y))
 #define MIN(x,y) ((x) < (y) ? (x) : (y))
-#define CLAMP(x, xmin, xmax) MAX(xim, MIN(x, xmax))
+#define CLAMP(x, xmin, xmax) (MAX((xim), (MIN((x), (xmax)))))
 #endif
 
 
@@ -122,7 +126,8 @@ enum objs_agree_t { AGREE_MINIMISE = -1, AGREE_NONE = 0, AGREE_MAXIMISE = 1 };
 static inline signed char *
 minmax_from_bool(int nobj, const bool * maximise)
 {
-    signed char * minmax = malloc(sizeof(signed char) * nobj);
+    // unsigned int to fix -Walloc-larger-than= warning.
+    signed char * minmax = malloc(sizeof(signed char) * (unsigned int) nobj);
     for (int k = 0; k < nobj; k++) {
         minmax[k] = (maximise[k]) ? AGREE_MAXIMISE : AGREE_MINIMISE;
     }

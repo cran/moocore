@@ -28,7 +28,19 @@ static void init_genrand(mt19937_state *state, uint32_t s) {
      * only MSBs of the array mt[].
      * 2002/01/09 modified by Makoto Matsumoto
      */
+      /* This code triggers conversions between uint32_t and unsigned long,
+         which various compilers warn about. */
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wconversion"
+#if defined(__clang__)
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wimplicit-int-conversion"
+#endif
     mt[mti] = (1812433253UL * (mt[mti - 1] ^ (mt[mti - 1] >> 30)) + mti);
+#  pragma GCC diagnostic push
+#if defined(__clang__)
+#  pragma clang diagnostic pop
+#endif
     /* for > 32 bit machines */
     mt[mti] &= 0xffffffffUL;
   }
@@ -85,6 +97,23 @@ void mt19937_gen(mt19937_state *state) {
   uint32_t y;
   int i;
 
+/* Not sure how to fix these warnings::
+
+mt19937/mt19937.c:90:53: warning: higher order bits are zeroes after implicit conversion [-Wimplicit-int-conversion]
+   90 |     state->key[i] = state->key[i + M] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
+      |                                                     ^~~~~~~~ ~
+mt19937/mt19937.c:94:59: warning: higher order bits are zeroes after implicit conversion [-Wimplicit-int-conversion]
+   94 |     state->key[i] = state->key[i + (M - N)] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
+      |                                                           ^~~~~~~~ ~
+mt19937/mt19937.c:97:55: warning: higher order bits are zeroes after implicit conversion [-Wimplicit-int-conversion]
+   97 |   state->key[N - 1] = state->key[M - 1] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
+      |                                                       ^~~~~~~~ ~
+*/
+#if defined(__clang__)
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wimplicit-int-conversion"
+#endif
+
   for (i = 0; i < N - M; i++) {
     y = (state->key[i] & UPPER_MASK) | (state->key[i + 1] & LOWER_MASK);
     state->key[i] = state->key[i + M] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
@@ -95,6 +124,10 @@ void mt19937_gen(mt19937_state *state) {
   }
   y = (state->key[N - 1] & UPPER_MASK) | (state->key[0] & LOWER_MASK);
   state->key[N - 1] = state->key[M - 1] ^ (y >> 1) ^ (-(y & 1) & MATRIX_A);
+
+#if defined(__clang__)
+#  pragma clang diagnostic pop
+#endif
 
   state->pos = 0;
 }

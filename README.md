@@ -3,7 +3,7 @@
 
 <!-- badges: start -->
 [![CRAN version](https://www.r-pkg.org/badges/version-last-release/moocore)][r-moocore-cran]
-[![CRAN Status](https://www.r-pkg.org/badges/version-last-release/moocore)][r-moocore-cran]
+[![CRAN Status](https://badges.cranchecks.info/worst/moocore.svg)][r-moocore-cran-results]
 [![CRAN Downloads](https://cranlogs.r-pkg.org/badges/grand-total/moocore)][r-moocore-cran]
 [![R build status][r-build-badge]][r-build-link]
 [![coverage][r-coverage-badge]][r-coverage-link]
@@ -25,13 +25,19 @@
 Introduction
 ============
 
-The goal of **moocore** is to collect fast implementations of core mathematical functions and algorithms for multi-objective optimization. These functions include:
+This webpage documents the `moocore` R package. There is also a [`moocore` Python package](https://multi-objective.github.io/moocore/python/)
+
+
+The goal of the [**moocore** project](https://github.com/multi-objective/moocore/) is to collect fast implementations of core mathematical functions and algorithms for multi-objective optimization and make them available to different programming languages via similar interfaces. These functions include:
 
  * Identifying and filtering dominated vectors.
  * Quality metrics such as (weighted) hypervolume, epsilon, IGD, etc.
  * Computation of the Empirical Attainment Function. The empirical attainment function (EAF) describes the probabilistic
 distribution of the outcomes obtained by a stochastic algorithm in the
 objective space.
+
+Most critical functionality is implemented in C, with the R and Python packages providing convenient interfaces to the C code.
+
 
 **Keywords**: empirical attainment function, summary attainment surfaces, EAF
 differences, multi-objective optimization, bi-objective optimization,
@@ -86,7 +92,7 @@ following commands within the R console:
 
 ```R
     R> install.packages("devtools")
-    R> devtools::install_github("multi-objective/moocore")
+    R> devtools::install_github("multi-objective/moocore/r")
 ```
 
 Usage
@@ -98,11 +104,6 @@ Once the **moocore** package is installed, the following R commands will give mo
     ?eaf
     ?read_datasets
 ```
-
-Python
-------
-
-There is also a Python `moocore` package: https://multi-objective.github.io/moocore/python
 
 
 License
@@ -133,10 +134,11 @@ Moreover, as a personal note, I would appreciate it if you would email
 `manuel.lopez-ibanez@manchester.ac.uk` with citations of papers referencing
 this work so I can mention them to my funding agent and tenure committee.
 
-[r-build-badge]: https://github.com/multi-objective/moocore/workflows/R/badge.svg
-[r-build-link]: https://github.com/multi-objective/moocore/actions/workflows/R.yaml
+[r-build-badge]: https://github.com/multi-objective/moocore/actions/workflows/R.yml/badge.svg?event=push
+[r-build-link]: https://github.com/multi-objective/moocore/actions/workflows/R.yml
 [r-coverage-badge]: https://codecov.io/gh/multi-objective/moocore/branch/main/graph/badge.svg?flag=R
 [r-coverage-link]: https://app.codecov.io/gh/multi-objective/moocore/tree/main/r
 [r-moocore-github]: https://github.com/multi-objective/moocore/tree/main/r#readme
 [r-moocore-homepage]: https://multi-objective.github.io/moocore/r/
 [r-moocore-cran]: https://cran.r-project.org/package=moocore
+[r-moocore-cran-results]: https://cran.r-project.org/web/checks/check_results_moocore.html
