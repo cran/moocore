@@ -7,7 +7,7 @@
 #' @param reference `matrix`|`data.frame`\cr Reference set as a matrix or
 #'   data.frame of numerical values.
 #'
-#' @return  `numeric(1)`\cr A single numerical value.
+#' @return  `numeric(1)` A single numerical value.
 #'
 #' @name epsilon
 #'
@@ -15,31 +15,37 @@
 #'
 #' @details
 #'
-#' The epsilon metric of a set \eqn{A} with respect to a reference set \eqn{R}
-#' is defined as
+#' The epsilon metric of a set \eqn{A \subset \mathbb{R}^m} with respect to a
+#' reference set \eqn{R \subset \mathbb{R}^m} is defined as
 #'
-#' \deqn{epsilon(A,R) = \max_{r \in R} \min_{a \in A} \max_{1 \leq i \leq n} epsilon(a_i, r_i)}
+#' \deqn{epsilon(A,R) = \max_{r \in R} \min_{a \in A} \max_{1 \leq i \leq m} epsilon(a_i, r_i)}
 #'
-#' where \eqn{a} and \eqn{b} are objective vectors and, in the case of
-#' minimization of objective \eqn{i}, \eqn{epsilon(a_i,b_i)} is computed as
-#' \eqn{a_i/b_i} for the multiplicative variant (respectively, \eqn{a_i - b_i}
-#' for the additive variant), whereas in the case of maximization of objective
-#' \eqn{i}, \eqn{epsilon(a_i,b_i) = b_i/a_i} for the multiplicative variant
-#' (respectively, \eqn{b_i - a_i} for the additive variant). This allows
-#' computing a single value for problems where some objectives are to be
-#' maximized while others are to be minimized. Moreover, a lower value
-#' corresponds to a better approximation set, independently of the type of
-#' problem (minimization, maximization or mixed). However, the meaning of the
-#' value is different for each objective type. For example, imagine that
+#' where \eqn{a} and \eqn{b} are objective vectors of length \eqn{m}.
+#'
+#' In the case of minimization of objective \eqn{i}, \eqn{epsilon(a_i,b_i)} is
+#' computed as \eqn{a_i/b_i} for the multiplicative variant (respectively,
+#' \eqn{a_i - b_i} for the additive variant), whereas in the case of
+#' maximization of objective \eqn{i}, \eqn{epsilon(a_i,b_i) = b_i/a_i} for the
+#' multiplicative variant (respectively, \eqn{b_i - a_i} for the additive
+#' variant). This allows computing a single value for problems where some
+#' objectives are to be maximized while others are to be minimized. Moreover, a
+#' lower value corresponds to a better approximation set, independently of the
+#' type of problem (minimization, maximization or mixed). However, the meaning
+#' of the value is different for each objective type. For example, imagine that
 #' objective 1 is to be minimized and objective 2 is to be maximized, and the
 #' multiplicative epsilon computed here for \eqn{epsilon(A,R) = 3}. This means
 #' that \eqn{A} needs to be multiplied by 1/3 for all \eqn{a_1} values and by 3
-#' for all \eqn{a_2} values in order to weakly dominate \eqn{R}. The
-#' computation of the multiplicative version for negative values doesn't make
-#' sense.
+#' for all \eqn{a_2} values in order to weakly dominate \eqn{R}.
 #'
-#' Computation of the epsilon indicator requires \eqn{O(n \cdot |A| \cdot
-#' |R|)}, where \eqn{n} is the number of objectives (dimension of vectors).
+#' The multiplicative variant can be computed as \eqn{\exp(epsilon_{+}(\log(A),
+#' \log(R)))}, which makes clear that the computation of the multiplicative
+#' version for zero or negative values doesn't make sense. See the examples
+#' below.
+#'
+#' The current implementation uses the naive algorithm that requires
+#' \eqn{O(m \cdot |A| \cdot |R|)}, where \eqn{m} is the number of objectives
+#' (dimension of vectors).
+#'
 #' @references
 #'
 #' \insertRef{ZitThiLauFon2003:tec}{moocore}
@@ -69,6 +75,9 @@ NULL
 #' epsilon_mult(A1, A2) # A1 weakly dominates A2 => e = 1
 #' @expect equal(2)
 #' epsilon_mult(A2, A1) # A2 is epsilon-dominated by A1 => e = 2 > 1
+#' # Equivalence between additive and multiplicative
+#' @expect equal(2)
+#' exp(epsilon_additive(log(A2), log(A1)))
 #'
 #' # A more realistic example
 #' extdata_path <- system.file(package="moocore","extdata")

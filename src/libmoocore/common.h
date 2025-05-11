@@ -4,27 +4,47 @@
 #ifdef R_PACKAGE
 #define R_NO_REMAP
 #include <R.h>
-#define fatal_error(...) Rf_error(__VA_ARGS__)
 #define assert(EXP)                                                       \
-    do { if (!(EXP)) { Rf_error("error: assertion failed: '%s' at %s:%d", \
+    do { if (unlikely(!(EXP))) { Rf_error("error: assertion failed: '%s' at %s:%d", \
                                 #EXP, __FILE__, __LINE__);}} while(0)
+#include "gcc_attribs.h"
+#define fatal_error(...) Rf_error(__VA_ARGS__)
+#define moocore_perror(...) Rf_error(__VA_ARGS__)
 #define errprintf Rf_error
 #define warnprintf Rf_warning
-#include "gcc_attribs.h"
 #else
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 #include "gcc_attribs.h"
-#define Rprintf(...) printf(__VA_ARGS__)
-void fatal_error(const char * format,...) __attribute__ ((format(printf, 1, 2))) __noreturn _no_warn_unused;
+_attr_maybe_unused void fatal_error(const char * format,...) __attribute__ ((format(printf, 1, 2))) __noreturn;
 void errprintf(const char * format,...) __attribute__ ((format(printf, 1, 2)));
 void warnprintf(const char *format,...)  __attribute__ ((format(printf, 1, 2)));
+#define moocore_perror(...) do {                                               \
+        char buffer[1024] = "";                                                \
+        snprintf(buffer, 1024, __VA_ARGS__);                                   \
+        perror(buffer);                                                        \
+        exit(EXIT_FAILURE);                                                    \
+    } while(0)
 #endif
-#include <stdbool.h>
 
-#define eaf_assert(X) assert(X)
+#include <stdbool.h>
+#include <inttypes.h> // For PRIuPTR
+static inline void *
+moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
+{
+    // FIXME: Check multiplication overflow.
+    // https://github.com/bminor/glibc/blob/e64a1e81aadf6c401174ac9471ced0f0125c2912/malloc/malloc.c#L3709
+    // https://github.com/libressl/openbsd/blob/master/src/lib/libc/stdlib/reallocarray.c
+    void * p = malloc(nmemb * size);
+    if (unlikely(!p))
+        moocore_perror("%s:%d: malloc (%" PRIuPTR " * %" PRIuPTR ") failed",
+                       file, line, (uintptr_t)nmemb, (uintptr_t)size);
+    return p;
+}
+
+#define MOOCORE_MALLOC(NMEMB, TYPE) moocore_malloc((NMEMB), sizeof(TYPE), __FILE__, __LINE__)
 
 #if __GNUC__ >= 3
 #define __cmp_op_min <
@@ -101,9 +121,6 @@ void warnprintf(const char *format,...)  __attribute__ ((format(printf, 1, 2)));
 #define ignore_unused_result(X)  do { if(X) {}} while(0);
 #endif
 
-typedef unsigned long ulong;
-typedef long long longlong;
-
 /* FIXME: Move this to a better place: matrix.h ? */
 /* FIXME: Measure if this is faster than the R implementation of t()  */
 static inline void
@@ -119,12 +136,36 @@ matrix_transpose_double(double *dst, const double *src,
     }
 }
 
+#include <stdint.h>
+typedef uint_fast8_t dimension_t;
+
 /* FIXME: Move this to nondominated.h */
 enum objs_agree_t { AGREE_MINIMISE = -1, AGREE_NONE = 0, AGREE_MAXIMISE = 1 };
 
+static inline enum objs_agree_t
+check_all_minimize_maximize(const signed char * restrict minmax, dimension_t dim)
+{
+    bool all_minimize = true, all_maximize = true;
+    for (dimension_t d = 0; d < dim; d++) {
+        if (minmax[d] < 0) {
+            all_maximize = false;
+        } else if (minmax[d] > 0) {
+            all_minimize = false;
+        } else {
+            all_minimize = false;
+            all_maximize = false;
+            break;
+        }
+    }
+    assert(!all_maximize || !all_minimize);
+    if (all_minimize) return AGREE_MINIMISE;
+    if (all_maximize) return AGREE_MAXIMISE;
+    return AGREE_NONE;
+}
+
 /* Convert from bool vector to minmax vector.  */
 static inline signed char *
-minmax_from_bool(int nobj, const bool * maximise)
+minmax_from_bool(int nobj, const bool * restrict maximise)
 {
     // unsigned int to fix -Walloc-larger-than= warning.
     signed char * minmax = malloc(sizeof(signed char) * (unsigned int) nobj);
@@ -133,6 +174,5 @@ minmax_from_bool(int nobj, const bool * maximise)
     }
     return minmax;
 }
-
 
 #endif 	    /* !LIBMISC_COMMON_H_ */

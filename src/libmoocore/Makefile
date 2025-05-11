@@ -2,8 +2,7 @@
 
 #  Makefile for moocore
 
-VERSION = 0.1.2
-#VERSION = 0.1.2$(REVISION)
+VERSION = 0.15.1
 
 #-----------------------------------------------------------------------
 
@@ -98,7 +97,6 @@ OBJS  = $(SRCS:.c=.o)
 EXE_LDFLAGS=-lm
 
 include gitversion.mk
-include gcc.mk
 
 # mex
 MEX?=mkoctfile --mex
@@ -109,124 +107,105 @@ else
 CPPFLAGS += -U_GNU_SOURCE
 endif
 
-EXE_CFLAGS += $(OPT_CFLAGS) $(WARN_CFLAGS) \
+EXE_CFLAGS += $(SANITIZERS) $(OPT_CFLAGS) $(WARN_CFLAGS) \
 	-DDEBUG=$(DEBUG) -DVERSION='"$(VERSION)"' -DMARCH='"$(gcc-guess-march)"'
 
-igdexe = $(BINDIR)/igd$(EXE)
-epsilonexe = $(BINDIR)/epsilon$(EXE)
 dominatedsetsexe = $(BINDIR)/dominatedsets$(EXE)
-nondominatedexe = $(BINDIR)/nondominated$(EXE)
-ndsortexe = $(BINDIR)/ndsort$(EXE)
 eafexe=$(BINDIR)/eaf$(EXE)
+epsilonexe = $(BINDIR)/epsilon$(EXE)
 hvexe=$(BINDIR)/hv$(EXE)
+igdexe = $(BINDIR)/igd$(EXE)
+ndsortexe = $(BINDIR)/ndsort$(EXE)
+nondominatedexe = $(BINDIR)/nondominated$(EXE)
+allexes=$(dominatedsetsexe) $(eafexe) $(epsilonexe) $(hvexe) $(igdexe) $(ndsortexe) $(nondominatedexe)
 
+.PHONY : all clean default dist dominatedsets eaf epsilon hv igd ndsort nondominated test time
 
-.PHONY : all clean dist default test time eaf hv nondominated
-
-default: $(igdexe) $(epsilonexe) $(dominatedsetsexe) $(nondominatedexe) $(ndsortexe) $(eafexe) $(hvexe)
-
-igd: $(igdexe)
-epsilon: $(epsilonexe)
-dominatedsets: $(dominatedsetsexe)
-nondominated: $(nondominatedexe)
-ndsort: $(ndsortexe)
-eaf: $(eafexe)
-hv: $(hvexe)
-
-include libhv.mk
-
-$(igdexe): OBJS=igd.o io.o cmdline.o
-$(igdexe): HEADERS=igd.h nondominated.h cmdline.h
-
-$(epsilonexe): OBJS=epsilon.o io.o cmdline.o
-$(epsilonexe): HEADERS=epsilon.h nondominated.h cmdline.h
-
-$(dominatedsetsexe): OBJS=dominatedsets.o io.o cmdline.o
-$(dominatedsetsexe): HEADERS=nondominated.h cmdline.h
-
-$(nondominatedexe): OBJS=nondominated.o io.o cmdline.o
-$(nondominatedexe): HEADERS=common.h cmdline.h nondominated.h
-
-$(eafexe): OBJS=eaf.o io.o eaf_main.o eaf3d.o avl.o cmdline.o
-$(eafexe): HEADERS=eaf.h
-
-$(ndsortexe): OBJS=ndsort.o pareto.o io.o hv_contrib.c $(LIBHV_OBJS) cmdline.o
-$(ndsortexe): HEADERS=nondominated.h cmdline.h
-
-$(hvexe): OBJS=main-hv.o io.o timer.o cmdline.o $(LIBHV_OBJS)
-$(hvexe): HEADERS=hv.h timer.h
-
-io.o: io_priv.h io.h
-
-$(igdexe) $(epsilonexe) $(nondominatedexe) $(dominatedsetsexe) $(ndsortexe) $(eafexe) $(hvexe): $(OBJS) $(HEADERS)
-	$(call MKDIR, $(BINDIR)/)
-	$(call ECHO,--> Building $@ version $(VERSION) <---)
-	$(QUIET_LINK)$(CC) -o $@  $(OBJS) $(EXE_CFLAGS) $(CFLAGS) $(EXE_LDFLAGS)
-
-$(OBJS): $(HEADERS) common.h gcc_attribs.h
-
-clean:
-	@-$(RM) config.status config.log
-	@-$(RM) Hypervolume_MEX.mex
-
-	@for exe in $(igdexe) $(epsilonexe) $(dominatedsetsexe) $(nondominatedexe) $(ndsortexe) $(eafexe) $(hvexe); do \
-		echo "---> Removing $$exe <---"; \
-		$(RM) $$exe; \
-	done
-
-	$(call ECHO,---> Removing object files: $(OBJS) <---)
-	@$(RM) $(OBJS) $(HV_OBJS)
-
-TESTSUITE:="../testsuite"
-test: clean
-	@if ! test -d $(TESTSUITE); then  		    	         \
-	    echo "Error: Testsuite not found in $(TESTSUITE)" && exit 1; \
-	fi
-	$(MAKE) all DEBUG=1 SANITIZERS=""
-	$(MAKE) test-nondominated test-eaf test-hv
-
-test-nondominated:
-	$(MAKE) $(nondominatedexe) DEBUG=1 SANITIZERS=""
-	$(call ECHO,---> Testing $(nondominatedexe) for errors (DEBUG=1) <--- )
-	@cd $(TESTSUITE)/nondominated && ../regtest.py $(nondominatedexe) && cd $(PWD)
-
-test-eaf:
-	$(MAKE) eaf DEBUG=1 SANITIZERS=""
-	$(call ECHO,---> Testing $(eafexe) for errors (DEBUG=1) <--- )
-	@cd $(TESTSUITE)/eaf && ../regtest.py $(eafexe) && cd $(PWD)
-
-test-hv:
-	$(MAKE) $(hvexe) DEBUG=1 SANITIZERS=""
-	$(call ECHO,---> Testing $(hvexe) for errors (DEBUG=1) <--- )
-	@cd $(TESTSUITE)/hv && ../regtest.py $(hvexe) && cd $(PWD)
-
-time: clean
-	@if ! test -d $(TESTSUITE); then  		    	         \
-	    echo "Error: Testsuite not found in $(TESTSUITE)" && exit 1; \
-	fi
-	$(MAKE) all DEBUG=0 SANITIZERS=""
-	$(MAKE) time-nondominated time-eaf time-hv
-
-time-nondominated:
-	$(MAKE) $(nondominatedexe) DEBUG=0 SANITIZERS=""
-	$(call ECHO,---> Testing $(nondominatedexe) for speed (DEBUG=0) <--- )
-	@cd $(TESTSUITE)/nondominated && ../regtest.py $(nondominatedexe) && cd $(PWD)
-
-time-eaf:
-	$(MAKE) eaf DEBUG=0 SANITIZERS=""
-	$(call ECHO,---> Testing $(eafexe) for speed (DEBUG=0) <--- )
-	@cd $(TESTSUITE)/eaf && ../regtest.py $(eafexe) && cd $(PWD)
-
-time-hv:
-	$(MAKE) $(hvexe) DEBUG=0 SANITIZERS=""
-	$(call ECHO,---> Testing $(hvexe) for speed (DEBUG=0) <--- )
-	@cd $(TESTSUITE)/hv && ../regtest.py $(hvexe) && cd $(PWD)
+default: $(allexes)
 
 all: clean
 	$(MAKE) default
 
 %.o : %.c
 	$(QUIET_CC)$(CC) $(CPPFLAGS) $(EXE_CFLAGS) $(CFLAGS) -c -o $@ $<
+
+dominatedsets: $(dominatedsetsexe)
+eaf: $(eafexe)
+epsilon: $(epsilonexe)
+hv: $(hvexe)
+igd: $(igdexe)
+ndsort: $(ndsortexe)
+nondominated: $(nondominatedexe)
+
+include libhv.mk
+
+$(dominatedsetsexe): OBJS:=dominatedsets.o
+$(eafexe): OBJS:=eaf.o eaf_main.o eaf3d.o avl.o
+$(epsilonexe): OBJS:=epsilon.o
+$(hvexe): OBJS:=main-hv.o timer.o $(LIBHV_OBJS)
+$(igdexe): OBJS:=igd.o
+$(ndsortexe): OBJS:=ndsort.o pareto.o hv_contrib.c $(LIBHV_OBJS)
+$(nondominatedexe): OBJS:=nondominated.o
+
+dominatedsets.o: cmdline.h io.h nondominated.h
+eaf_main.o: cmdline.h io.h eaf.h
+epsilon.o: cmdline.h io.h epsilon.h nondominated.h
+main-hv.o: cmdline.h io.h hv.h timer.h
+ndsort.o: cmdline.h io.h nondominated.h
+nondominated.o : cmdline.h io.h nondominated.h
+timer.o: timer.h
+eaf.o eaf3d.h: eaf.h
+cmdline.o: cmdline.h io.h
+io.o: io_priv.h io.h
+igd.o : cmdline.h io.h igd.h
+avl.o: avl.h
+$(OBJS): common.h gcc_attribs.h
+
+$(allexes): $(OBJS) cmdline.o io.o
+	$(call MKDIR, $(BINDIR)/)
+	$(call ECHO,--> Building $@ version $(VERSION) <---)
+	$(QUIET_LINK)$(CC) -o $@ $(OBJS) cmdline.o io.o $(EXE_CFLAGS) $(CFLAGS) $(EXE_LDFLAGS)
+
+clean:
+	@-$(RM) config.status config.log
+	@-$(RM) Hypervolume_MEX.mex
+	@for exe in $(allexes); do \
+		echo "---> Removing $$exe <---"; \
+		$(RM) $$exe; \
+	done
+	$(call ECHO,---> Removing object files: $(OBJS) <---)
+	@$(RM) $(OBJS) $(HV_OBJS)
+
+TESTSUITE:="../testsuite"
+test: OPT_CFLAGS ?=-Og -g3
+test: SANITIZERS ?=
+test:
+	@if ! test -d $(TESTSUITE); then  		    	         \
+	    echo "Error: Testsuite not found in $(TESTSUITE)" && exit 1; \
+	fi
+	$(MAKE) all DEBUG=1 SANITIZERS="$(SANITIZERS)" OPT_CFLAGS="$(OPT_CFLAGS)"
+	$(MAKE) test-eaf test-nondominated test-hv test-igd test-epsilon test-dominatedsets
+
+test-eaf test-nondominated test-hv test-igd test-epsilon test-dominatedsets: target=$(subst test-,,$@)
+test-eaf test-nondominated test-hv test-igd test-epsilon test-dominatedsets: OPT_CFLAGS ?=-Og -g3
+test-eaf test-nondominated test-hv test-igd test-epsilon test-dominatedsets: SANITIZERS ?=
+test-eaf test-nondominated test-hv test-igd test-epsilon test-dominatedsets:
+	$(MAKE) $(target) DEBUG=1 SANITIZERS="$(SANITIZERS)" OPT_CFLAGS="$(OPT_CFLAGS)"
+	$(call ECHO,---> Testing $(target) for errors (DEBUG=1) <--- )
+	@cd $(TESTSUITE)/$(target) && ../regtest.py $(BINDIR)/$(target)$(EXE) && cd $(PWD)
+
+time:
+	@if ! test -d $(TESTSUITE); then  		    	         \
+	    echo "Error: Testsuite not found in $(TESTSUITE)" && exit 1; \
+	fi
+	$(MAKE) all DEBUG=0 SANITIZERS=""
+	$(MAKE) time-eaf time-nondominated time-hv time-igd time-epsilon time-dominatedsets
+
+time-eaf time-nondominated time-hv time-igd time-epsilon time-dominatedsets: target=$(subst time-,,$@)
+time-eaf time-nondominated time-hv time-igd time-epsilon time-dominatedsets:
+	$(MAKE) $(target) DEBUG=0 SANITIZERS=""
+	$(call ECHO,---> Testing $(target) for speed (DEBUG=0) <--- )
+	@cd $(TESTSUITE)/$(target) && ../regtest.py $(BINDIR)/$(target)$(EXE) && cd $(PWD)
 
 mex: Hypervolume_MEX.c $(LIBHV_OBJS)
 	$(call ECHO,---> You can use 'make mex MEXFLAGS="-O -std=c99"' to pass flags to mex. Code compiled by mex is less optimized (slower) than the default 'hv' command-line program <---)
@@ -246,3 +225,5 @@ dist: all
 
 TAGS: *.c *.h
 	etags *.c *.h
+
+include gcc.mk

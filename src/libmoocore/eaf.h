@@ -36,23 +36,6 @@
 #include <math.h>
 
 #include "common.h"
-
-#ifdef R_PACKAGE
-#define R_NO_REMAP
-#include <R.h>
-#define EAF_MALLOC(WHAT, NMEMB, TYPE)                                          \
-    do { WHAT = malloc ((NMEMB) * sizeof(TYPE));                               \
-        if (!WHAT)                                                             \
-            Rf_error(__FILE__ ": %s = malloc (%lu * %lu) failed", #WHAT,       \
-                     (unsigned long) (NMEMB), (unsigned long) sizeof(TYPE));   \
-    } while (0)
-#else
-#define EAF_MALLOC(WHAT, NMEMB, TYPE)                                          \
-    do { WHAT = malloc ((NMEMB) * sizeof(TYPE));                               \
-        if (!WHAT) { perror (__FILE__ ": " #WHAT ); exit (EXIT_FAILURE); }     \
-    } while(0)
-#endif // R_PACKAGE
-
 #include "io.h"
 
 /* If the input are always integers, adjusting this type will
@@ -147,7 +130,7 @@ static inline void
 attained_left_right (const bit_array *attained, int division, int total,
                      int *count_left, int *count_right)
 {
-    eaf_assert (division < total);
+    assert (division < total);
     int count_l = 0;
     int count_r = 0;
     int k;
@@ -176,13 +159,13 @@ percentile2level (double p, int n)
     int level = (x - floor(x) <= tolerance)
         ? (int) floor(x) : (int) ceil(x);
 
-    eaf_assert(level <= n);
-    eaf_assert(level >= 0);
+    assert(level <= n);
+    assert(level >= 0);
     if (level < 1) level = 1;
     return level;
 }
 
-_no_warn_unused static int *
+_attr_maybe_unused static int *
 levels_from_percentiles(const double * percentile, int nlevels, int nruns)
 {
     int *level;
@@ -191,7 +174,7 @@ levels_from_percentiles(const double * percentile, int nlevels, int nruns)
         for (int k = 0; k < nlevels; k++)
             level[k] = percentile2level(percentile[k], nruns);
     } else {
-        eaf_assert (nlevels == nruns);
+        assert (nlevels == nruns);
         level = malloc(sizeof(int) * nruns);
         for (int k = 0; k < nruns; k++)
             level[k] = k + 1;
@@ -199,7 +182,7 @@ levels_from_percentiles(const double * percentile, int nlevels, int nruns)
     return level;
 }
 
-_no_warn_unused static void
+_attr_maybe_unused static void
 all_percentiles (double * percentiles, int n_sets)
 {
     const double x = 100.0 / (double)n_sets;
@@ -210,7 +193,7 @@ all_percentiles (double * percentiles, int n_sets)
 void eaf2matrix_R(double *rmat, eaf_t * const * eaf, int nobj, int totalpoints,
                   const double * percentile, int nlevels);
 
-void eaf2matrix(double *rmat, eaf_t * const * eaf, int nobj, _no_warn_unused int totalpoints,
+void eaf2matrix(double *rmat, eaf_t * const * eaf, int nobj, _attr_maybe_unused int totalpoints,
                 const double * percentile, int nlevels);
 
 double *
@@ -234,7 +217,7 @@ double *
 eafdiff_compute_matrix(int *eaf_npoints, double * data, int nobj,
                        const int *cumsizes, int nruns, int intervals);
 
-#define cvector_assert(X) eaf_assert(X)
+#define cvector_assert(X) assert(X)
 #include "cvector.h"
 vector_define(vector_objective, objective_t)
 vector_define(vector_int, int)

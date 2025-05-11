@@ -7,6 +7,8 @@
 [![CRAN Downloads](https://cranlogs.r-pkg.org/badges/grand-total/moocore)][r-moocore-cran]
 [![R build status][r-build-badge]][r-build-link]
 [![coverage][r-coverage-badge]][r-coverage-link]
+[![r-universe version](https://multi-objective.r-universe.dev/badges/moocore)](https://multi-objective.r-universe.dev/moocore)
+[![r-universe build status](https://github.com/r-universe/multi-objective/actions/workflows/build.yml/badge.svg)](https://github.com/r-universe/multi-objective/actions/workflows/build.yml)
 <!-- badges: end -->
 
 [ [**Homepage**][r-moocore-homepage] ]
@@ -88,11 +90,10 @@ GitHub (Development version)
 ----------------------------
 
 If you wish to try the development version, you can install it by executing the
-following commands within the R console:
+following command within the R console:
 
-```R
-    R> install.packages("devtools")
-    R> devtools::install_github("multi-objective/moocore/r")
+```r
+install.packages('moocore', repos = c('https://multi-objective.r-universe.dev', 'https://cloud.r-project.org'))
 ```
 
 Usage
@@ -138,7 +139,7 @@ this work so I can mention them to my funding agent and tenure committee.
 [r-build-link]: https://github.com/multi-objective/moocore/actions/workflows/R.yml
 [r-coverage-badge]: https://codecov.io/gh/multi-objective/moocore/branch/main/graph/badge.svg?flag=R
 [r-coverage-link]: https://app.codecov.io/gh/multi-objective/moocore/tree/main/r
+[r-moocore-cran-results]: https://cran.r-project.org/web/checks/check_results_moocore.html
+[r-moocore-cran]: https://cran.r-project.org/package=moocore
 [r-moocore-github]: https://github.com/multi-objective/moocore/tree/main/r#readme
 [r-moocore-homepage]: https://multi-objective.github.io/moocore/r/
-[r-moocore-cran]: https://cran.r-project.org/package=moocore
-[r-moocore-cran-results]: https://cran.r-project.org/web/checks/check_results_moocore.html

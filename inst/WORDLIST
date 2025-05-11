@@ -13,6 +13,7 @@ EAFs
 Flowshop
 GD
 GPs
+Ginsbourger
 Hausdorff
 Hypervolume
 IGD
@@ -30,6 +31,7 @@ ORCID
 Paquete
 Preuss
 Quemy
+Roustant
 Roxygen
 SPEA
 Stützle
@@ -40,6 +42,7 @@ TabuCol
 Vanzyl
 Vanzyl's
 Vorob'ev
+Vorob'ev
 behavior
 behaviors
 bibtex
@@ -49,11 +52,13 @@ color
 colormap
 colors
 doi
+hyperrectangle
+hyperrectangles
 hypervolume
+hypervolumes
 libre
 matrixStats
 metaheuristic
 nondominated
-Vorob'ev
-Ginsbourger
-Roustant
+orthotopes
+polytope

@@ -31,11 +31,10 @@
 
 
 *************************************************************************/
-#include "eaf.h"
 
 #include <stdio.h>
 #include <stdlib.h> // strtol()
-#include <ctype.h>  // isprint()
+#include <ctype.h>  // isspace()
 #include <assert.h>
 #include <string.h>
 #include <stdbool.h> // for bool, true and false
@@ -43,6 +42,9 @@
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
 #include <errno.h>
+
+#include "eaf.h"
+
 #define CMDLINE_COPYRIGHT_YEARS "2009-2023"
 #define CMDLINE_AUTHORS "Carlos Fonseca <cmfonsec@ualg.pt>\n" \
     "Manuel Lopez-Ibanez <manuel.lopez-ibanez@manchester.ac.uk>\n"
@@ -57,8 +59,8 @@ static void usage(void)
 "With no FILE, or when FILE is -, read standard input.\n\n"
 
 "Options:\n"
-" -h, --help          print this summary and exit                           \n"
-"     --version       print version number (and compilation flags) and exit \n"
+OPTION_HELP_STR
+OPTION_VERSION_STR
 " -v, --verbose       print some information (time, input points, output    \n"
 "                     points, etc) in stderr. Default is --quiet            \n"
 " -o, --output FILE   write output to FILE instead of standard output.      \n"
@@ -151,8 +153,7 @@ static void
 eaf_print (eaf_t **eaf, int nobj, int nlevels,
            FILE *coord_file, FILE *indic_file, FILE *diff_file)
 {
-    int k;
-    for (k = 0; k < nlevels; k++) {
+    for (int k = 0; k < nlevels; k++) {
         eaf_print_attsurf (eaf[k], nobj, coord_file, indic_file, diff_file);
         if (coord_file)
             fprintf (coord_file, "\n");
@@ -200,7 +201,7 @@ int main(int argc, char *argv[])
     int longopt_index;
     /* see the man page for getopt_long for an explanation of these fields */
     static const char short_options[] = "hVvqbmwl:p:o:i::d::P";
-    static struct option long_options[] = {
+    static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
         {"version",    no_argument,       NULL, 'V'},
         {"verbose",    no_argument,       NULL, 'v'},
@@ -300,22 +301,8 @@ int main(int argc, char *argv[])
             verbose_flag = true;
             break;
 
-        case 'V': // --version
-            version();
-            exit(EXIT_SUCCESS);
-
-        case 'h': // --help
-            usage();
-            exit(EXIT_SUCCESS);
-
-        case '?':
-            // getopt prints an error message right here
-            fprintf(stderr, "Try `%s --help' for more information.\n",
-                    program_invocation_short_name);
-            exit(EXIT_FAILURE);
-
         default:
-            abort ();
+            default_cmdline_handler(option);
         }
     }
 

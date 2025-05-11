@@ -1,7 +1,7 @@
 Package: moocore
 Type: Package
 Title: Core Mathematical Functions for Multi-Objective Optimization
-Version: 0.1.2
+Version: 0.1.5
 Authors@R: c(person("Manuel", "López-Ibáñez", role = c("aut", "cre"),
                     email = "manuel.lopez-ibanez@manchester.ac.uk",
                     comment = c(ORCID = "0000-0001-9974-1295")),
@@ -28,16 +28,17 @@ URL: https://multi-objective.github.io/moocore/r/,
 LazyLoad: true
 LazyData: true
 Encoding: UTF-8
+UseLTO: true
 RoxygenNote: 7.3.2
 SystemRequirements: GNU make
 RdMacros: Rdpack
 Config/testthat/edition: 3
 Language: en-GB
-Config/Needs/website: rmarkdown, reshape2, ggplot2
+Config/Needs/website: rmarkdown, tidyr, ggplot2
 NeedsCompilation: yes
-Packaged: 2024-09-17 16:11:12 UTC; manu
-Author: Manuel López-Ibáñez [aut, cre]
-    (<https://orcid.org/0000-0001-9974-1295>),
+Packaged: 2025-05-11 13:44:09 UTC; manu
+Author: Manuel López-Ibáñez [aut, cre] (ORCID:
+    <https://orcid.org/0000-0001-9974-1295>),
   Carlos Fonseca [ctb],
   Luís Paquete [ctb],
   Andreia P. Guerreiro [ctb],
@@ -50,4 +51,4 @@ Author: Manuel López-Ibáñez [aut, cre]
   Takuji Nishimura [cph] (mt19937 library)
 Maintainer: Manuel López-Ibáñez <manuel.lopez-ibanez@manchester.ac.uk>
 Repository: CRAN
-Date/Publication: 2024-09-18 04:50:02 UTC
+Date/Publication: 2025-05-11 22:10:05 UTC

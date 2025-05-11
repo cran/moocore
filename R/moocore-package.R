@@ -29,16 +29,16 @@ NULL
 #' @keywords datasets
 "HybridGA"
 
-#'Results of SPEA2 when minimising electrical cost and maximising the
-#'minimum idle time of pumps on Richmond water network.
+#' Results of SPEA2 when minimising electrical cost and maximising the
+#' minimum idle time of pumps on Richmond water network.
 #'
-#'@format
+#' @format
 #'  A data frame as produced by [read_datasets()]. The second
 #'  column measures time in seconds and corresponds to a maximisation problem.
 #'
 #' @source \insertRef{LopezIbanezPhD}{moocore}
 #'
-#'@examples
+#' @examples
 #' data(SPEA2minstoptimeRichmond)
 #' str(SPEA2minstoptimeRichmond)
 #' @keywords datasets
@@ -47,7 +47,7 @@ NULL
 #' Results of SPEA2 with relative time-controlled triggers on Richmond water
 #' network.
 #'
-#'@format
+#' @format
 #'  A data frame as produced by [read_datasets()].
 #'
 #' @source \insertRef{LopezIbanezPhD}{moocore}
@@ -58,8 +58,8 @@ NULL
 #' @keywords datasets
 "SPEA2relativeRichmond"
 
-#'Results of SPEA2 with relative time-controlled triggers on Vanzyl's
-#'water network.
+#' Results of SPEA2 with relative time-controlled triggers on Vanzyl's
+#' water network.
 #'
 #' @inherit SPEA2relativeRichmond format source
 #'
@@ -72,8 +72,8 @@ NULL
 
 #' Conditional Pareto fronts obtained from Gaussian processes simulations.
 #'
-#' The data has the only goal of providing an example of use of [vorobT()] and
-#' [vorobDev()]. It has been obtained by fitting two Gaussian processes on 20
+#' The data has the only goal of providing an example of use of [vorob_t()] and
+#' [vorob_dev()]. It has been obtained by fitting two Gaussian processes on 20
 #' observations of a bi-objective problem, before generating conditional
 #' simulation of both GPs at different locations and extracting non-dominated
 #' values of coupled simulations.
@@ -91,7 +91,7 @@ NULL
 #'
 #'@examples
 #' data(CPFs)
-#' vorobT(CPFs, reference = c(2, 200))
+#' vorob_t(CPFs, reference = c(2, 200))
 #'@keywords datasets
 "CPFs"
 
@@ -99,20 +99,20 @@ NULL
 #' Flowshop Problem with Makespan and Weighted Tardiness objectives.
 #'
 #' @format
-#'  A data frame with 1511 observations of  4 variables:
+#'  A data frame with 1511 observations of 4 variables:
 #'  \describe{
 #'    \item{`algorithm`}{TPLS search strategy}
 #'    \item{`Makespan`}{first objective values.}
 #'    \item{`WeightedTardiness`}{second objective values.}
-#'    \item{`set`}{indices of corresponding conditional Pareto fronts.}
+#'    \item{`run`}{index of the run.}
 #'  }
 #'
 #'@source
 #'
 #' \insertRef{DubLopStu2011amai}{moocore}
 #'
-#'@examples
+#' @examples
 #' data(tpls50x20_1_MWT)
 #' str(tpls50x20_1_MWT)
-#'@keywords datasets
+#' @keywords datasets
 "tpls50x20_1_MWT"

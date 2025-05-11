@@ -5,9 +5,10 @@
 
 static const char stdin_name[] = "<stdin>";
 
-// FIXME: Should this be %-16.15g ?
-#define point_printf_format "% 17.16g"
-#define point_printf_sep    "\t"
+// Longest number is -1.23456789012345e-308
+#define point_printf_format "%-22.15g"
+#define point_printf_sep    " "
+#define indicator_printf_format "%-22.15g"
 
 /* Error codes for read_data.  */
 enum ERROR_READ_DATA { READ_INPUT_FILE_EMPTY = -1,
@@ -42,42 +43,55 @@ int write_sets_filtered (FILE *outfile, const double *data, int ncols,
                          const int *cumsizes, int nruns,
                          const bool *write_p);
 
+
+static inline const signed char *
+default_minmax(int nobj, signed char default_value)
+{
+    ASSUME(nobj > 0);
+    ASSUME(default_value == AGREE_MINIMISE || default_value == AGREE_MAXIMISE);
+    signed char * minmax = malloc (sizeof(signed char) * nobj);
+    for (int i = 0; i < nobj; i++)
+        minmax[i] = default_value;
+    return minmax;
+}
+
+static inline const signed char *
+minmax_minimise(int nobj)
+{
+    return default_minmax(nobj, AGREE_MINIMISE);
+}
+
+static inline const signed char *
+minmax_maximise(int nobj)
+{
+    return default_minmax(nobj, AGREE_MAXIMISE);
+}
+
 static inline const signed char *
 read_minmax (const char *str, int *nobj_p)
 {
-    signed char * minmax;
-    size_t i;
-    size_t nobj = (size_t) *nobj_p;
-
-    if (str == NULL) { /* Default all minimised.  */
-        assert (nobj > 0);
-        minmax = malloc (sizeof(signed char) * nobj);
-        for (i = 0; i < nobj; i++)
-            minmax[i] = -1;
-        return minmax;
-    }
-
+    assert (str != NULL);
     size_t len = strlen(str);
     bool all_ignored = true;
-    minmax = malloc (sizeof(signed char) * MAX(len, nobj));
-    for (i = 0; i < len; i++) {
-        switch (str[i])
-        {
-        case '+':
-            minmax[i] = 1;
-            all_ignored = false;
-            break;
-        case '-':
-            minmax[i] = -1;
-            all_ignored = false;
-            break;
-        case '0':
-        case 'i':
-            minmax[i] = 0;
-            break;
-        default: /* something unexpected was found */
-            return NULL;
-            break;
+    size_t nobj = (size_t) *nobj_p;
+    signed char * minmax = malloc (sizeof(signed char) * MAX(len, nobj));
+    for (size_t i = 0; i < len; i++) {
+        switch (str[i]) {
+          case '+':
+              minmax[i] = 1;
+              all_ignored = false;
+              break;
+          case '-':
+              minmax[i] = -1;
+              all_ignored = false;
+              break;
+          case '0':
+          case 'i':
+              minmax[i] = 0;
+              break;
+          default: /* something unexpected was found */
+              return NULL;
+              break;
         }
     }
 
@@ -87,7 +101,7 @@ read_minmax (const char *str, int *nobj_p)
     }
     // FIXME: How to adjust minmax dynamically according to the number of objectives?
     if (len < nobj) { // Cycle
-        for (i = 0; i < (nobj - len); i++) {
+        for (size_t i = 0; i < (nobj - len); i++) {
             minmax[len + i] = minmax[i];
         }
     }
@@ -98,35 +112,38 @@ read_minmax (const char *str, int *nobj_p)
 static inline const bool *
 read_bitvector (const char *str, int *nobj_p)
 {
-    bool * vec;
-    size_t i;
     size_t nobj = *nobj_p;
 
     if (str == NULL) { /* Default all false.  */
         assert (nobj > 0);
-        vec = malloc (sizeof(bool) * nobj);
-        for (i = 0; i < nobj; i++)
-            vec[i] = false;
-        return vec;
+        return (bool *) calloc(nobj, sizeof(bool));
     }
 
     size_t len = strlen (str);
-    vec = malloc (sizeof(bool) * len);
-    for (i = 0; i < len; i++) {
-        switch (str[i]) {
-          case '1':
-              vec[i] = true;
-              break;
-          case '0':
-              vec[i] = false;
-              break;
-          default: /* something unexpected was found */
-              return NULL;
-        }
-    }
+    for (size_t i = 0; i < len; i++)
+        if (str[i] != '0' && str[i] != '1') /* something unexpected was found */
+            return NULL;
+
+    bool * vec = malloc (sizeof(bool) * len);
+    for (size_t i = 0; i < len; i++)
+        vec[i] = (str[i] == '1');
+
     *nobj_p = (int) len;
     return vec;
 }
+
+static inline bool *
+new_bool_maximise(int nobj, bool maximise_all)
+{
+    ASSUME(nobj <= 32);
+    ASSUME(nobj >= 1);
+    bool * maximise = malloc(sizeof(bool) * nobj);
+    for (int k = 0; k < nobj; k++)
+        maximise[k] = maximise_all;
+    return maximise;
+}
+
+
 
 #endif // R_PACKAGE
 #endif // EAF_INPUT_OUTPUT_H

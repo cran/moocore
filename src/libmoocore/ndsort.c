@@ -41,15 +41,16 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <ctype.h> // for isspace()
 
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
 #include <math.h>  // for INFINITY
+
+#include "hv.h"
 #include "nondominated.h" // for normalise()
+
 #define READ_INPUT_WRONG_INITIAL_DIM_ERRSTR "-o, --obj"
 #include "cmdline.h"
-#include "hv.h"
 
 static void usage(void)
 {
@@ -62,8 +63,6 @@ static void usage(void)
 "Options:\n"
 OPTION_HELP_STR
 OPTION_VERSION_STR
-" -h, --help          give  this summary and exit.                          \n"
-"     --version       print version number and exit.                        \n"
 " -v, --verbose       print some information (time, number of points, etc.) \n"
 OPTION_QUIET_STR
 //" -H, --hypervolume   use hypervolume contribution to break ties            \n"
@@ -133,7 +132,8 @@ int main(int argc, char *argv[])
 //    bool keep_uevs_flag = false;
 
     /* see the man page for getopt_long for an explanation of these fields */
-    static struct option long_options[] = {
+    static const char short_options[] = "hVvqkro:";
+    static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
         {"version",    no_argument,       NULL, 'V'},
         {"verbose",    no_argument,       NULL, 'v'},
@@ -149,13 +149,9 @@ int main(int argc, char *argv[])
 
     int opt; /* it's actually going to hold a char */
     int longopt_index;
-    while (0 < (opt = getopt_long(argc, argv, "hVvqkro:",
+    while (0 < (opt = getopt_long(argc, argv, short_options,
                                   long_options, &longopt_index))) {
         switch (opt) {
-        case 'V': // --version
-            version();
-            exit(EXIT_SUCCESS);
-
         case 'q': // --quiet
             verbose_flag = false;
             break;
@@ -175,24 +171,11 @@ int main(int argc, char *argv[])
             break;
 
         case 'o': // --obj
-            minmax = read_minmax (optarg, &dim);
-            if (minmax == NULL) {
-                fprintf(stderr, "%s: invalid argument '%s' for -o, --obj\n",
-                        program_invocation_short_name,optarg);
-                exit(EXIT_FAILURE);
-            }
+            minmax = parse_cmdline_minmax(minmax, optarg, &dim);
             break;
 
-        case '?':
-            // getopt prints an error message right here
-            fprintf(stderr, "Try `%s --help' for more information.\n",
-                    program_invocation_short_name);
-            exit(EXIT_FAILURE);
-        case 'h':
-            usage();
-            exit(EXIT_SUCCESS);
-        default: // should never happen
-            abort();
+        default:
+            default_cmdline_handler(opt);
         }
     }
 
@@ -208,16 +191,18 @@ int main(int argc, char *argv[])
     }
 
     /* FIXME: Instead of this strange call, create a wrapper read_data_robust. */
-    int err = read_double_data (filename, &points, &dim, &cumsizes, &nsets);
-    if (!filename) filename = stdin_name;
-    handle_read_data_error (err, filename);
+    handle_read_data_error(
+        read_double_data (filename, &points, &dim, &cumsizes, &nsets),
+        filename);
+    if (!filename)
+        filename = stdin_name;
 
     const int size = cumsizes[0] = cumsizes[nsets - 1];
     nsets = 1;
 
     /* Default minmax if not set yet.  */
     if (minmax == NULL)
-        minmax = read_minmax (NULL, &dim);
+        minmax = minmax_minimise(dim);
 
     if (verbose_flag) {
         printf ("# file: %s\n", filename);
@@ -226,9 +211,7 @@ int main(int argc, char *argv[])
 
     int * rank = pareto_rank (points, dim, size);
 
-
     if (only_rank_flag) {
-
         fprint_rank (stdout, rank, size);
 
     } else {

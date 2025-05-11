@@ -53,17 +53,17 @@
 
 *************************************************************************/
 
-#include "epsilon.h"
-#include "nondominated.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <ctype.h> // for isspace()
-
+#include <string.h> // for strndup()
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
+
+#include "epsilon.h"
+#include "nondominated.h"
+
 #define READ_INPUT_WRONG_INITIAL_DIM_ERRSTR "-o, --obj"
 #include "cmdline.h"
 
@@ -92,6 +92,28 @@ static bool verbose_flag = false;
 static bool percentages_flag = false;
 static bool check_flag = true;
 
+// strnlen() is not available in C99.
+static inline size_t
+x_strnlen(const char *s, size_t maxlen)
+{
+    size_t len = 0;
+    while (len < maxlen && s[len] != '\0')
+        len++;
+    return len;
+}
+
+// strndup() is not available in C99.
+static char * x_strndup(const char *s, size_t n)
+{
+    size_t len = x_strnlen(s, n);         // Find length up to n or end of string
+    char * new_str = malloc(len + 1);      // Allocate memory (+1 for null terminator)
+    if (unlikely(new_str == NULL))
+        return NULL;                      // malloc failed
+    memcpy(new_str, s, len);              // Copy the string up to len
+    new_str[len] = '\0';                  // Null-terminate
+    return new_str;
+}
+
 void
 print_results (char **filenames, int numfiles, int *nruns, int **results)
 {
@@ -103,7 +125,7 @@ print_results (char **filenames, int numfiles, int *nruns, int **results)
 
     /* longest filename.  */
     for (k = 0; k < numfiles; k++)
-        max_filename_len = MAX (max_filename_len, (int) strlen (filenames[k]));
+        max_filename_len = MAX (max_filename_len, (int) strlen(filenames[k]));
 
     /* longest number.  */
     for (k = 0; k < numfiles; k++)
@@ -207,7 +229,7 @@ static int set_dominates (int dim, const signed char *minmax,
     for (int y = 0; y < size_y; y++) {
         x_weakly_dominates_y = false;
         for (int x = 0; x < size_x; x++) {
-            DEBUG1 (
+            DEBUG2 (
                 printf ("X:");
                 vector_printf (points_x + x * dim, dim);
                 printf ("Y:");
@@ -216,13 +238,13 @@ static int set_dominates (int dim, const signed char *minmax,
             int result = dominance (dim, &points_x[x * dim],
                                     &points_y[y * dim], minmax);
             if (result == 1) {
-                DEBUG1 (printf ("X dominates Y!\n"));
+                DEBUG2(printf ("X dominates Y!\n"));
                 x_weakly_dominates_y = true;
                 x_dominates_y = true;
                 break;
 
             } else if (result == 0) {
-                DEBUG1 (printf ("X weakly dominates Y!\n"));
+                DEBUG2(printf ("X weakly dominates Y!\n"));
                 x_weakly_dominates_y = true;
                 break;
             }
@@ -246,11 +268,11 @@ pareto_better (int dim, const signed char *minmax,
 {
     int result = set_dominates (dim, minmax, points_a, size_a, points_b, size_b);
     if (result == 1) {
-        DEBUG1 (printf ("Trying with B\n"));
+        DEBUG2 (printf ("Trying with B\n"));
         result = set_dominates (dim, minmax, points_b, size_b, points_a, size_a);
         result = -result;
         if (result != 1) {
-            DEBUG1(printf("A || B\n"));
+            DEBUG2(printf("A || B\n"));
             result = 0;
         }
     }
@@ -280,16 +302,12 @@ cmpparetos (int dim, const signed char *minmax,
             const double * points_b, int nruns_b,
             const int *cumsizes_b, int *numbetter_b)
 {
-    int a,b, result;
-    int size_a;
-    int size_b;
-
     *numbetter_a = 0;
     *numbetter_b = 0;
 
-    for (a = 0, size_a = 0; a < nruns_a; a++) {
-        for (b = 0, size_b = 0; b < nruns_b; b++) {
-            result =
+    for (int a = 0, size_a = 0; a < nruns_a; a++) {
+        for (int b = 0, size_b = 0; b < nruns_b; b++) {
+            int result =
                 pareto_better (dim, minmax,
                                points_a + (dim * size_a),
                                cumsizes_a[a] - size_a,
@@ -318,7 +336,8 @@ int main(int argc, char *argv[])
 
     int k, n, j;
     /* see the man page for getopt_long for an explanation of these fields */
-    static struct option long_options[] = {
+    static const char short_options[] = "hVvqpo:";
+    static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
         {"version",    no_argument,       NULL, 'V'},
         {"verbose",    no_argument,       NULL, 'v'},
@@ -326,19 +345,15 @@ int main(int argc, char *argv[])
         {"percentages",no_argument,       NULL, 'p'},
         {"no-check",   no_argument,       NULL, 'c'},
         {"obj",        required_argument, NULL, 'o'},
-
         {NULL, 0, NULL, 0} /* marks end of list */
     };
     set_program_invocation_short_name(argv[0]);
+
     int opt; /* it's actually going to hold a char */
     int longopt_index;
-    while (0 < (opt = getopt_long(argc, argv, "hVvqpo:",
+    while (0 < (opt = getopt_long(argc, argv, short_options,
                                   long_options, &longopt_index))) {
         switch (opt) {
-        case 'V': // --version
-            version();
-            exit(EXIT_SUCCESS);
-
         case 'q': // --quiet
             verbose_flag = false;
             break;
@@ -356,24 +371,11 @@ int main(int argc, char *argv[])
             break;
 
         case 'o': // --obj
-            minmax = read_minmax (optarg, &dim);
-            if (minmax == NULL) {
-                fprintf(stderr, "%s: invalid argument '%s' for -o, --obj\n",
-                        program_invocation_short_name,optarg);
-                exit(EXIT_FAILURE);
-            }
+            minmax = parse_cmdline_minmax(minmax, optarg, &dim);
             break;
 
-        case '?':
-            // getopt prints an error message right here
-            fprintf(stderr, "Try `%s --help' for more information.\n",
-                    program_invocation_short_name);
-            exit(EXIT_FAILURE);
-        case 'h':
-            usage();
-            exit(EXIT_SUCCESS);
-        default: // should never happen
-            abort();
+        default:
+            default_cmdline_handler(opt);
         }
     }
 
@@ -396,23 +398,21 @@ int main(int argc, char *argv[])
         points[k] = NULL;
         cumsizes[k] = NULL;
         nruns[k] = 0;
-        int err = read_double_data (filenames[k],
-                                    &points[k], &dim, &cumsizes[k], &nruns[k]);
-        handle_read_data_error (err, filenames[k]);
+        handle_read_data_error(
+            read_double_data (filenames[k], &points[k], &dim, &cumsizes[k], &nruns[k]),
+            filenames[k]);
     }
 
     /* Default minmax if not set yet.  */
     if (minmax == NULL)
-        minmax = read_minmax (NULL, &dim);
+        minmax = minmax_minimise(dim);
 
     /* Print filename substitutions.  */
     for (k = 0; k < numfiles; k++) {
         char buffer[32];
-        char *p;
-        snprintf(buffer, 32, "f%d", k + 1);
+        snprintf(buffer, 31, "f%d", k + 1);
         buffer[31] = '\0';
-        p = malloc (sizeof(char) * (strlen(buffer) + 1));
-        strncpy (p, buffer, 32);
+        char *p = x_strndup(buffer, 31);
         printf ("# %s: %s\n", p, filenames[k]);
         filenames[k] = p;
     }

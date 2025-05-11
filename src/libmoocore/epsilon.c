@@ -57,13 +57,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <ctype.h> // for isspace()
-
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
+
 #include "epsilon.h"
 #include "nondominated.h"
+
 #include "cmdline.h"
+
 
 static bool verbose_flag = false;
 static bool additive_flag = true;
@@ -81,33 +82,39 @@ static void usage(void)
 "Calculates the epsilon measure for the Pareto sets given as input\n\n"
 
 "Options:\n"
-" -h, --help           give  this summary and exit.                          \n"
-"     --version        print version number and exit.                        \n"
-" -v, --verbose        print some information (time, number of points, etc.) \n"
-" -q, --quiet          print as little as possible                           \n"
-" -a, --additive       epsilon additive value %s                             \n"
-" -m, --multiplicative epsilon multiplicative value %s                       \n"
+OPTION_HELP_STR
+OPTION_VERSION_STR
+" -v, --verbose        print some information (time, number of points, etc.).\n"
+OPTION_QUIET_STR
+" -a, --additive       epsilon additive value %s.                       \n"
+" -m, --multiplicative epsilon multiplicative value %s.                 \n"
 " -r, --reference FILE file that contains the reference set                  \n"
-" -o, --obj [+|-]...   specify whether each objective should be              \n"
-"                      minimised (-) or maximised (+) (default all minimised)\n"
-" -s, --suffix=STRING Create an output file for each input file by appending\n"
-"                     this suffix. This is ignored when reading from stdin. \n"
-"                     If missing, output is sent to stdout.                 \n"
+OPTION_OBJ_STR
+OPTION_MAXIMISE_STR
+" -s, --suffix=STRING  Create an output file for each input file by appending\n"
+"                      this suffix. This is ignored when reading from stdin. \n"
+"                      If missing, output is sent to stdout.                 \n"
 "\n", str_is_default(additive_flag), str_is_default(!additive_flag));
 }
 
 static void
 do_file (const char *filename, double *reference, int reference_size,
-         int *nobj_p, const signed char * minmax)
+         int *nobj_p, const signed char * minmax, bool maximise_all_flag)
 {
     double *data = NULL;
     int *cumsizes = NULL;
     int nruns = 0;
     int nobj = *nobj_p;
 
-    int err = read_double_data (filename, &data, &nobj, &cumsizes, &nruns);
-    if (!filename) filename = stdin_name;
-    handle_read_data_error (err, filename);
+    handle_read_data_error(
+        read_double_data (filename, &data, &nobj, &cumsizes, &nruns), filename);
+    if (!filename)
+        filename = stdin_name;
+
+    if (!additive_flag && !all_positive(data, cumsizes[nruns - 1], (dimension_t) nobj)) {
+        errprintf("cannot calculate multiplicative epsilon indicator with non-positive values when reading '%s'.", filename);
+        exit(EXIT_FAILURE);
+    }
 
     char *outfilename = NULL;
     FILE *outfile = stdout;
@@ -128,16 +135,14 @@ do_file (const char *filename, double *reference, int reference_size,
     /* Default minmax if not set yet.  */
     bool free_minmax = false;
     if (minmax == NULL) {
-        minmax = read_minmax (NULL, &nobj);
+        minmax = maximise_all_flag ? minmax_maximise(nobj) : minmax_minimise(nobj);
         free_minmax = true;
     }
 
     if (verbose_flag)
         printf("# file: %s\n", filename);
 
-    int cumsize;
-    int n;
-    for (n = 0, cumsize = 0; n < nruns; cumsize = cumsizes[n], n++) {
+    for (int n = 0, cumsize = 0; n < nruns; cumsize = cumsizes[n], n++) {
         // double time_elapsed = 0;
         //Timer_start ();
         double epsilon = (additive_flag)
@@ -148,9 +153,8 @@ do_file (const char *filename, double *reference, int reference_size,
                                    &data[nobj * cumsize], cumsizes[n] - cumsize,
                                    reference, reference_size);
         //        time_elapsed = Timer_elapsed_virtual ();
-        fprintf (outfile, "%-16.15g\n", epsilon);
-        if ((additive_flag && epsilon < 0)
-            || (!additive_flag && epsilon < 1)) {
+        fprintf (outfile, indicator_printf_format "\n", epsilon);
+        if ((additive_flag && epsilon < 0) || (!additive_flag && epsilon < 1)) {
             errprintf ("%s: some points are not  dominated by the reference set",
                        filename);
             exit (EXIT_FAILURE);
@@ -174,22 +178,28 @@ do_file (const char *filename, double *reference, int reference_size,
 
 int main(int argc, char *argv[])
 {
+    bool check_flag = true;
     double *reference = NULL;
     int reference_size = 0;
-    int nobj = 0;
     const signed char *minmax = NULL;
+    bool maximise_all_flag = false;
+    int nobj = 0, tmp_nobj = 0;
+
     /* see the man page for getopt_long for an explanation of these fields */
-    static struct option long_options[] = {
+    static const char short_options[] = "hVvqamMr:s:o:";
+    static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
         {"version",    no_argument,       NULL, 'V'},
         {"verbose",    no_argument,       NULL, 'v'},
         {"quiet",      no_argument,       NULL, 'q'},
+        {"no-check",   no_argument,       NULL, 'c'},
         {"additive",   no_argument,       NULL, 'a'},
         {"multiplicative",   no_argument, NULL, 'm'},
+        {"maximise",   no_argument,       NULL, 'M'},
+        {"maximize",   no_argument,       NULL, 'M'},
         {"reference",  required_argument, NULL, 'r'},
         {"suffix",     required_argument, NULL, 's'},
         {"obj",        required_argument, NULL, 'o'},
-
         {NULL, 0, NULL, 0} /* marks end of list */
     };
 
@@ -197,9 +207,13 @@ int main(int argc, char *argv[])
 
     int opt; /* it's actually going to hold a char */
     int longopt_index;
-    while (0 < (opt = getopt_long(argc, argv, "hVvqamr:us:o:",
+    while (0 < (opt = getopt_long(argc, argv, short_options,
                                   long_options, &longopt_index))) {
         switch (opt) {
+          case 'c': // --no-check
+            check_flag = false;
+            break;
+
         case 'a': // --additive
             additive_flag = true;
             break;
@@ -208,30 +222,31 @@ int main(int argc, char *argv[])
             additive_flag = false;
             break;
 
+        case 'M': // --maximise
+            maximise_all_flag = true;
+            break;
+
         case 'o': // --obj
-            minmax = read_minmax (optarg, &nobj);
-            if (minmax == NULL) {
-                fprintf(stderr, "%s: invalid argument '%s' for -o, --obj\n",
-                        program_invocation_short_name,optarg);
-                exit(EXIT_FAILURE);
-            }
+            minmax = parse_cmdline_minmax(minmax, optarg, &nobj);
             break;
 
         case 'r': // --reference
-            reference_size = read_reference_set (&reference, optarg, &nobj);
+            reference_size = read_reference_set(&reference, optarg, &tmp_nobj);
             if (reference == NULL || reference_size <= 0) {
                 errprintf ("invalid reference set '%s", optarg);
-                exit (EXIT_FAILURE);
+                exit(EXIT_FAILURE);
+            }
+            if (nobj == 0) {
+                nobj = tmp_nobj;
+            } else if (tmp_nobj != nobj) {
+                errprintf ("number of objectives in --obj (%d) and reference set (%d) do not match", nobj, tmp_nobj);
+                exit(EXIT_FAILURE);
             }
             break;
 
         case 's': // --suffix
             suffix = optarg;
             break;
-
-        case 'V': // --version
-            version();
-            exit(EXIT_SUCCESS);
 
         case 'q': // --quiet
             verbose_flag = false;
@@ -241,16 +256,8 @@ int main(int argc, char *argv[])
             verbose_flag = true;
             break;
 
-        case '?':
-            // getopt prints an error message right here
-            fprintf(stderr, "Try `%s --help' for more information.\n",
-                    program_invocation_short_name);
-            exit(EXIT_FAILURE);
-        case 'h':
-            usage();
-            exit(EXIT_SUCCESS);
-        default: // should never happen
-            abort();
+        default:
+            default_cmdline_handler(opt);
         }
     }
 
@@ -263,12 +270,26 @@ int main(int argc, char *argv[])
         errprintf ("a reference set must be provided (--reference)");
         exit (EXIT_FAILURE);
     }
-
+    if (minmax == NULL) {
+        minmax = maximise_all_flag ? minmax_maximise(nobj) : minmax_minimise(nobj);
+    }
+    if (check_flag) {
+        /* Ensure the reference set is nondominated.  */
+        int prev_reference_size = reference_size;
+        reference_size = filter_dominated_set(reference, nobj, reference_size, minmax);
+        if (prev_reference_size > reference_size)
+            warnprintf("removed %d dominated points from the reference set",
+                       prev_reference_size - reference_size);
+    }
+    if (!additive_flag && !all_positive(reference, (size_t) reference_size, (dimension_t) nobj)) {
+        errprintf("cannot calculate multiplicative epsilon indicator with non-positive values in reference front.");
+        exit(EXIT_FAILURE);
+    }
     int numfiles = argc - optind;
-    if (numfiles < 1) {/* Read stdin.  */
-        do_file (NULL, reference, reference_size, &nobj, minmax);
+    if (numfiles < 1) { /* Read stdin.  */
+        do_file (NULL, reference, reference_size, &nobj, minmax, maximise_all_flag);
     } else if (numfiles == 1) {
-        do_file (argv[optind], reference, reference_size, &nobj, minmax);
+        do_file (argv[optind], reference, reference_size, &nobj, minmax, maximise_all_flag);
     } else {
         int k;
         /* FIXME: Calculate the nondominated front among all input
@@ -293,8 +314,10 @@ int main(int argc, char *argv[])
         }
 #endif
         for (k = 0; k < numfiles; k++)
-            do_file (argv[optind + k], reference, reference_size, &nobj, minmax);
+            do_file (argv[optind + k], reference, reference_size, &nobj, minmax, maximise_all_flag);
     }
 
+    free(reference);
+    free((void*)minmax);
     return EXIT_SUCCESS;
 }
