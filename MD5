@@ -1,6 +1,6 @@
-240a72d6349eeddac109596de97d38c2 *DESCRIPTION
+939a3550cfab49f6c8c9cbddb5d050ae *DESCRIPTION
 2bd2caac794a7749e366bb53033a9ee5 *NAMESPACE
-bffb65a4c5041238b9c314b1b087b769 *NEWS.md
+8f7d519564d29e4e7c60b1319bdc618f *NEWS.md
 db4fc204585be81ca0b7ce4f57f533f5 *R/eaf.R
 e368c66cf0045b8fb19bc098f7fcba09 *R/eafdiff.R
 4a0d4656f0945899002aaf42dd5f885e *R/epsilon.R
@@ -17,7 +17,7 @@ e109921899d84fcd331ca315aed88e85 *R/rbind_datasets.R
 876e443b1af067c74f315746dc28616a *R/whv.R
 864043835b30246f8d76259ce4a784cd *R/zzz.R
 efc1a184c97bbd0ad2ea284342298e64 *README.md
-c9bc189b62e27e69fe32683134f74fd0 *build/partial.rdb
+e3af764eb9b76003bbbc3b4fcbe52810 *build/partial.rdb
 c3cab8ebae74cf0541ff500177c7bd3f *cleanup
 1c38bb40df3f939a3d506de57fadf6f9 *data/CPFs.rda
 85bae51ecf771dbb34c15360c8f35aed *data/HybridGA.rda
@@ -67,7 +67,7 @@ af1c546cde7c30e29803c2354205ad5e *man/normalise.Rd
 e63146a2f2fc39182962f9c17f6f4b18 *man/whv_hype.Rd
 ddc396d5124dd6a5f65692e1c059af8e *man/whv_rect.Rd
 40c2977dad26f7cc7e2b8644a6640eff *man/write_datasets.Rd
-5a3804e26e450f532511e81953d75b22 *src/Makevars
+468b5b1cefe44bd4275fee5ec2e89b4a *src/Makevars
 52de5aba8a6890074115cc9ce3cc75cc *src/Makevars.ucrt
 aa8d666d8959062539932923354bb74a *src/Makevars.win
 63556d1add645b733f212bacd92bab9a *src/Rcommon.h
@@ -94,7 +94,7 @@ bfee40ccc45aa75ff2211311f3c16fd6 *src/libmoocore/epsilon.c
 6377270cf39f347c5b357851f668e16d *src/libmoocore/epsilon.h
 68c3b2ecb3a501a4d8032f0cc338c31a *src/libmoocore/gcc.mk
 9499756fdf43ee1cb440780142bd26b0 *src/libmoocore/gcc_attribs.h
-2c8bdd865ed035c85eb0b7764ff8bee2 *src/libmoocore/git_version
+c49e9b3a9aa810fee3e18dd80f8c9a3d *src/libmoocore/git_version
 c04efe210b1f01a77e898a9a0c5d437a *src/libmoocore/gitversion.mk
 216a4b6a825daf1831e685d6334fb242 *src/libmoocore/hv-plus.c
 8ed6a1eaaa0793df873ffc68c0f01ffb *src/libmoocore/hv.c
