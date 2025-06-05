@@ -1,18 +1,8 @@
 #' Hypervolume metric
 #'
 #' Compute the hypervolume metric with respect to a given reference point
-#' assuming minimization of all objectives. For 2D and 3D, the algorithm used
-#' \citep{FonPaqLop06:hypervolume,BeuFonLopPaqVah09:tec} has \eqn{O(n \log n)}
-#' complexity, where \eqn{n} is the number of input points.  For 4D or higher,
-#' it uses a recursive algorithm that has the 3D algorithm as a base case
-#' algorithm \citep{FonPaqLop06:hypervolume}, which has \eqn{O(n^{m-2} \log n)}
-#' time and linear space complexity in the worst-case, where \eqn{m} is the
-#' dimension of the points, but experimental results show that the pruning
-#' techniques used may reduce the time complexity even further.  Andreia
-#' P. Guerreiro improved the integration of the 3D case with the recursive
-#' algorithm, which leads to significant reduction of computation time. She has
-#' also enhanced the numerical stability of the algorithm by avoiding
-#' floating-point comparisons of partial hypervolumes.
+#' assuming minimization of all objectives.
+#'
 #'
 #' @inherit epsilon params return
 #'
@@ -27,11 +17,11 @@
 #' \mathbb{R}^d}{A in R^m} with respect to a reference point \eqn{\vec{r} \in
 #' \mathbb{R}^d}{r in R^m} is the volume of the region dominated by the set and
 #' bounded by the reference point \citep{ZitThi1998ppsn}.  Points in \eqn{A}
-#' that do not strictly dominated \eqn{\vec{r}} do not contribute to the
+#' that do not strictly dominate \eqn{\vec{r}} do not contribute to the
 #' hypervolume value, thus, ideally, the reference point must be strictly
 #' dominated by all points in the true Pareto front.
 #'
-#' More precisely, the hypervolume is the Lebesgue integral of the union of
+#' More precisely, the hypervolume is the [Lebesgue measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of the union of
 #' axis-aligned hyperrectangles
 #' ([orthotopes](https://en.wikipedia.org/wiki/Hyperrectangle)), where each
 #' hyperrectangle is defined by one point from \eqn{\vec{a} \in A} and the
@@ -48,6 +38,31 @@
 #' Conversely, if the hypervolume of a set is larger than the hypervolume of
 #' another, then we know for sure than the latter set cannot be better than the
 #' former in terms of Pareto-optimality.
+#'
+#' For 2D and 3D, the algorithms used
+#' \citep{FonPaqLop06:hypervolume,BeuFonLopPaqVah09:tec} have \eqn{O(n \log n)}
+#' complexity, where \eqn{n} is the number of input points. The 3D case uses
+#' the \eqn{\text{HV3D}^{+}} algorithm \citep{GueFon2017hv4d}, which has the
+#' sample complexity as the HV3D algorithm
+#' \citep{FonPaqLop06:hypervolume,BeuFonLopPaqVah09:tec}, but it is faster in
+#' practice.
+#'
+#' For 4D, the algorithm used is \eqn{\text{HV4D}^{+}} \citep{GueFon2017hv4d},
+#' which has \eqn{O(n^2)} complexity.  Compared to the [original
+#' implementation](https://github.com/apguerreiro/HVC/), this implementation
+#' correctly handles weakly dominated points and has been further optimized for
+#' speed.
+#'
+#' For 5D or higher, it uses a recursive algorithm
+#' \citep{FonPaqLop06:hypervolume} with \eqn{\text{HV4D}^{+}} as the base case.
+#' The original proposal \citep{FonPaqLop06:hypervolume} had the HV3D algorithm
+#' as the base case.  This recursive algorithm has \eqn{O(n^{m-2} \log n)} time
+#' and linear space complexity in the worst-case, where \eqn{m} is the
+#' dimension of the points, but experimental results show that the pruning
+#' techniques used may reduce the time complexity even further.  Andreia
+#' P. Guerreiro enhanced the numerical stability of the algorithm by avoiding
+#' floating-point comparisons of partial hypervolumes.
+#'
 #'
 #' @references
 #'

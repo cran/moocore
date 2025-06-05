@@ -1,3 +1,12 @@
+# moocore 0.1.7
+
+ * `hypervolume()` now uses the HV3D+ algorithm for the 3D case and the HV4D+ algorithm for the 4D case.
+   For dimensions larger than 4, the recursive algorithm uses HV4D+ as the base case, which is significantly faster.
+
+ * `read_datasets()` is significantly faster for large files.
+
+ * `is_nondominated()` and `filter_dominated()` are faster for 3D inputs.
+
 # moocore 0.1.6
 
  * Fix parallel build in CRAN.

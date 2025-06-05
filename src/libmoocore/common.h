@@ -1,6 +1,7 @@
 #ifndef   	LIBMISC_COMMON_H_
 # define   	LIBMISC_COMMON_H_
 
+#include "config.h"
 #ifdef R_PACKAGE
 #define R_NO_REMAP
 #include <R.h>
@@ -18,19 +19,18 @@
 #include <assert.h>
 #include <stdio.h>
 #include "gcc_attribs.h"
-_attr_maybe_unused void fatal_error(const char * format,...) __attribute__ ((format(printf, 1, 2))) __noreturn;
-void errprintf(const char * format,...) __attribute__ ((format(printf, 1, 2)));
-void warnprintf(const char *format,...)  __attribute__ ((format(printf, 1, 2)));
+_attr_maybe_unused void fatal_error(const char * format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2) __noreturn;
+void errprintf(const char * format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2);
+void warnprintf(const char *format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2);
 #define moocore_perror(...) do {                                               \
         char buffer[1024] = "";                                                \
         snprintf(buffer, 1024, __VA_ARGS__);                                   \
         perror(buffer);                                                        \
         exit(EXIT_FAILURE);                                                    \
     } while(0)
-#endif
+#endif // R_PACKAGE
 
 #include <stdbool.h>
-#include <inttypes.h> // For PRIuPTR
 static inline void *
 moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 {
@@ -39,8 +39,8 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
     // https://github.com/libressl/openbsd/blob/master/src/lib/libc/stdlib/reallocarray.c
     void * p = malloc(nmemb * size);
     if (unlikely(!p))
-        moocore_perror("%s:%d: malloc (%" PRIuPTR " * %" PRIuPTR ") failed",
-                       file, line, (uintptr_t)nmemb, (uintptr_t)size);
+        moocore_perror("%s:%d: malloc (%zu * %zu) failed",
+                       file, line, nmemb, size);
     return p;
 }
 
@@ -99,15 +99,20 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 #endif
 
 #ifndef R_PACKAGE
-#define DEBUG2_PRINT(...) DEBUG2 (fprintf (stderr,  __VA_ARGS__))
+#define DEBUG2_PRINT(...) DEBUG2(fprintf (stderr,  __VA_ARGS__))
 #else
-#define DEBUG2_PRINT(...) DEBUG2 (Rprintf ( __VA_ARGS__))
+#define DEBUG2_PRINT(...) DEBUG2(Rprintf ( __VA_ARGS__))
 #endif
 
 #define DEBUG2_FUNPRINT(...)                    \
     do { DEBUG2_PRINT ("%s(): ", __FUNCTION__); \
          DEBUG2_PRINT (__VA_ARGS__); } while(0)
 
+#if DEBUG >= 1
+#define ASSERT_OR_DO(COND, X) do{ if (!(COND)) { X;} assert(COND); } while(0)
+#else
+#define ASSERT_OR_DO(COND, X) while(0){ if (!(COND)) { X;} assert(COND); }
+#endif
 
 /* This is deprecated. See https://www.gnu.org/software/libc/manual/html_node/Heap-Consistency-Checking.html
 #if DEBUG >= 1
