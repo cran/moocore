@@ -1,5 +1,5 @@
-#ifndef   	LIBMISC_COMMON_H_
-# define   	LIBMISC_COMMON_H_
+#ifndef MOOCORE_COMMON_H_
+#define MOOCORE_COMMON_H_
 
 #include "config.h"
 #ifdef R_PACKAGE
@@ -19,7 +19,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "gcc_attribs.h"
-_attr_maybe_unused void fatal_error(const char * format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2) __noreturn;
+__noreturn _attr_maybe_unused void fatal_error(const char * format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2);
 void errprintf(const char * format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2);
 void warnprintf(const char *format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2);
 #define moocore_perror(...) do {                                               \
@@ -37,6 +37,7 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
     // FIXME: Check multiplication overflow.
     // https://github.com/bminor/glibc/blob/e64a1e81aadf6c401174ac9471ced0f0125c2912/malloc/malloc.c#L3709
     // https://github.com/libressl/openbsd/blob/master/src/lib/libc/stdlib/reallocarray.c
+    // https://github.com/python/cpython/blob/89df62c12093bfa079860a93032468ebece3774d/Include/internal/mimalloc/mimalloc/internal.h#L323
     void * p = malloc(nmemb * size);
     if (unlikely(!p))
         moocore_perror("%s:%d: malloc (%zu * %zu) failed",
@@ -46,7 +47,7 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 
 #define MOOCORE_MALLOC(NMEMB, TYPE) moocore_malloc((NMEMB), sizeof(TYPE), __FILE__, __LINE__)
 
-#if __GNUC__ >= 3
+#if (defined(__GNUC__) && __GNUC__ >= 3) || defined(__clang__)
 #define __cmp_op_min <
 #define __cmp_op_max >
 #define __cmp(op, x, y) ((x) __cmp_op_##op (y) ? (x) : (y))
@@ -99,9 +100,11 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 #endif
 
 #ifndef R_PACKAGE
-#define DEBUG2_PRINT(...) DEBUG2(fprintf (stderr,  __VA_ARGS__))
+# define DEBUG1_PRINT(...) DEBUG1(fprintf(stderr,  __VA_ARGS__))
+# define DEBUG2_PRINT(...) DEBUG2(fprintf(stderr,  __VA_ARGS__))
 #else
-#define DEBUG2_PRINT(...) DEBUG2(Rprintf ( __VA_ARGS__))
+# define DEBUG1_PRINT(...) DEBUG1(Rprintf( __VA_ARGS__))
+# define DEBUG2_PRINT(...) DEBUG2(Rprintf( __VA_ARGS__))
 #endif
 
 #define DEBUG2_FUNPRINT(...)                    \
@@ -124,6 +127,12 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 
 #ifndef ignore_unused_result
 #define ignore_unused_result(X)  do { if(X) {}} while(0);
+#endif
+
+#ifdef __cplusplus
+#define STATIC_CAST(TYPE,OP) (static_cast<TYPE>(OP))
+#else
+#define STATIC_CAST(TYPE,OP) ((TYPE)(OP))
 #endif
 
 /* FIXME: Move this to a better place: matrix.h ? */
@@ -180,4 +189,15 @@ minmax_from_bool(int nobj, const bool * restrict maximise)
     return minmax;
 }
 
-#endif 	    /* !LIBMISC_COMMON_H_ */
+static inline bool *
+new_bool_maximise(dimension_t nobj, bool maximise_all)
+{
+    ASSUME(nobj > 0);
+    ASSUME(nobj < 128);
+    bool * maximise = malloc(sizeof(bool) * nobj);
+    for (dimension_t k = 0; k < nobj; k++)
+        maximise[k] = maximise_all;
+    return maximise;
+}
+
+#endif 	    /* !MOOCORE_COMMON_H_ */

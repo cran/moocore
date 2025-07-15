@@ -1,3 +1,11 @@
+# moocore 0.1.8
+
+ * Document the EAF and Vorob'ev expectation and deviation in more detail.
+ * New function `hv_approx()`.
+ * Function `hv_contributions()` is much faster for 2D inputs.
+ * New article "[Approximating the hypervolume](https://multi-objective.github.io/moocore/r/articles/hv_approx.html)".
+ * New datasets `DTLZLinearShape.8d.front.60pts.10` and `ran.10pts.9d.10`.
+
 # moocore 0.1.7
 
  * `hypervolume()` now uses the HV3D+ algorithm for the 3D case and the HV4D+ algorithm for the 4D case.

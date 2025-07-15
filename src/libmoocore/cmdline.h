@@ -106,7 +106,7 @@ read_reference_set (double **reference_p, const char *filename, int *nobj_p)
 
 /* TODO: Handle "1 NAN 3", so NAN means use the minimum/maximum for this
    dimension.  */
-_attr_maybe_unused static double *
+static inline double *
 read_point(char * str, int * nobj)
 {
     int k = 0, size = 10;
@@ -139,6 +139,15 @@ read_point(char * str, int * nobj)
     if (k < size)
         point = realloc(point, k * sizeof(double));
     *nobj = k - 1;
+    return point;
+}
+
+static inline double *
+robust_read_point(char * restrict optarg, int *nobj, const char * restrict errmsg)
+{
+    double * point = read_point(optarg, nobj);
+    if (point == NULL)
+        fatal_error(errmsg, optarg);
     return point;
 }
 
@@ -195,8 +204,9 @@ file_bounds (const char *filename, double **maximum_p, double **minimum_p,
 static inline char * m_strcat(const char * a, const char * b)
 {
     size_t dest_len = strlen(a) + strlen(b) + 1;
-    char *dest = malloc (sizeof(char) * dest_len);
-    if (dest == NULL) return NULL;
+    char * dest = malloc(sizeof(char) * dest_len);
+    if (unlikely(dest == NULL))
+        return NULL;
     strcpy (dest, a);
     strcat (dest, b);
     return dest;
@@ -256,4 +266,5 @@ static inline void default_cmdline_handler(int opt)
           unreachable();
     }
 }
-#endif
+
+#endif // !CMDLINE_H

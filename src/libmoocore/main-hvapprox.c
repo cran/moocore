@@ -1,13 +1,11 @@
 /*************************************************************************
 
- hv: main program
+ hvapprox: main program
 
  ---------------------------------------------------------------------
 
-                       Copyright (c) 2010, 2025
-                  Carlos M. Fonseca <cmfonsec@dei.uc.pt>
+                       Copyright (c) 2025
              Manuel Lopez-Ibanez <manuel.lopez-ibanez@manchester.ac.uk>
-                    Luis Paquete <paquete@dei.uc.pt>
 
  This Source Code Form is subject to the terms of the Mozilla Public
  License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -16,16 +14,6 @@
  ----------------------------------------------------------------------
 
  Relevant literature:
-
- [1]  C. M. Fonseca, L. Paquete, and M. Lopez-Ibanez. An
-      improved dimension-sweep algorithm for the hypervolume
-      indicator. In IEEE Congress on Evolutionary Computation,
-      pages 1157-1163, Vancouver, Canada, July 2006.
-
- [2]  Nicola Beume, Carlos M. Fonseca, Manuel Lopez-Ibanez, Luis Paquete, and
-      J. Vahrenhold.  On the complexity of computing the hypervolume
-      indicator. IEEE Transactions on Evolutionary Computation,
-      13(5):1075-1082, 2009.
 
 *************************************************************************/
 #include "config.h"
@@ -36,19 +24,21 @@
 #include <string.h>
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
+#include <time.h> // time()
+#include <limits.h> // LONG_MAX
+#include <inttypes.h> // PRIu32
 
-#include "hv.h"
+#include "hvapprox.h"
 #include "timer.h"
-#define CMDLINE_COPYRIGHT_YEARS "2010-2023"
-#define CMDLINE_AUTHORS "Carlos M. Fonseca <cmfonsec@dei.uc.pt>\n" \
-    "Manuel Lopez-Ibanez <manuel.lopez-ibanez@manchester.ac.uk>\n" \
-    "Luis Paquete <paquete@dei.uc.pt>\n"
+#define CMDLINE_COPYRIGHT_YEARS "2025"
+#define CMDLINE_AUTHORS "Manuel Lopez-Ibanez <manuel.lopez-ibanez@manchester.ac.uk>\n"
 #include "cmdline.h"
 
 static int verbose_flag = 1;
 static bool union_flag = false;
-static bool contributions_flag = false;
 static char *suffix = NULL;
+
+enum approx_method_t { DZ2019_MC=1, DZ2019_HW=2 };
 
 static void usage(void)
 {
@@ -56,8 +46,9 @@ static void usage(void)
            "Usage: %s [OPTIONS] [FILE...]\n\n", program_invocation_short_name);
 
     printf(
-"Calculate the hypervolume of each input set of each FILE. \n"
-"With no FILE, or when FILE is -, read standard input.\n\n"
+"Approximate the hypervolume value of each input set of each FILE. \n"
+"The approximation uses Monte-Carlo sampling, thus gets more accurate with larger\n"
+"values of --nsamples. With no FILE, or when FILE is -, read standard input.\n\n"
 
 "Options:\n"
 OPTION_HELP_STR
@@ -69,19 +60,15 @@ OPTION_VERSION_STR
 "                     quotes, e.g., \"10 10 10\". If no reference point is  \n"
 "                     given, it is taken as max + 0.1 * (max - min) for each\n"
 "                     coordinate from the union of all input points.        \n"
-" -c, --contributions print the exclusive contribution of each input point. \n"
 " -s, --suffix=STRING Create an output file for each input file by appending\n"
 "                     this suffix. This is ignored when reading from stdin. \n"
 "                     If missing, output is sent to stdout.                 \n"
+" -n, --nsamples=N    Number of Monte-Carlo samples (N is a positive integer).\n"
+" -m, --method=M      1: Monte-Carlo sampling using normal distribution;    \n"
+"                     2: Hua-Wang deterministic sampling (default).         \n"
+" -S, --seed=S        Seed of the random number generator (S: positive integer).\n"
+"                     Only method=1.                                        \n"
 "\n");
-}
-
-static void
-fprint_hvc(FILE * outfile, const double * hvc, size_t n)
-{
-    for (size_t i = 0; i < n; i++)
-        fprintf(outfile, indicator_printf_format "\n", hvc[i]);
-    fprintf(outfile, "\n");
 }
 
 /*
@@ -97,9 +84,11 @@ fprint_hvc(FILE * outfile, const double * hvc, size_t n)
 
 */
 
+// FIXME: There is a similar function in main-hv.c
 static void
-hv_file (const char *filename, double *reference,
-         double *maximum, double *minimum, int *nobj_p)
+hvapprox_file (const char *filename, double *reference,
+               double *maximum, double *minimum, int *nobj_p,
+               uint_fast32_t nsamples, enum approx_method_t hv_approx_method, uint32_t seed)
 {
     double *data = NULL;
     int *cumsizes = NULL;
@@ -163,44 +152,39 @@ hv_file (const char *filename, double *reference,
         }
     }
 
-    if (needs_minimum) {
-        free(minimum);
-        free(maximum);
-    }
-
     if (verbose_flag >= 2) {
         printf ("# reference: ");
         vector_printf (reference, nobj);
         printf ("\n");
     }
 
-    double * hvc = NULL;
+    // Minimise everything by default.
+    const bool * maximise = new_bool_maximise((dimension_t) nobj, false);
     for (n = 0, cumsize = 0; n < nruns; cumsize = cumsizes[n], n++) {
         Timer_start ();
-        double volume, time_elapsed;
-        if (contributions_flag) {
-            hvc = realloc(hvc, (cumsizes[n] - cumsize) * sizeof(*hvc));
-            volume = hv_contributions(hvc, &data[nobj * cumsize], nobj, cumsizes[n] - cumsize, reference);
-        } else {
-            volume = fpli_hv(&data[nobj * cumsize], nobj, cumsizes[n] - cumsize, reference);
+
+        double volume;
+        switch (hv_approx_method) {
+          case DZ2019_MC:
+              volume = hv_approx_normal(&data[nobj * cumsize], nobj, cumsizes[n] - cumsize, reference, maximise, nsamples, seed);
+              break;
+          case DZ2019_HW:
+              volume = hv_approx_hua_wang(&data[nobj * cumsize], nobj, cumsizes[n] - cumsize, reference, maximise, nsamples);
+              break;
+          default:
+              unreachable();
         }
+
         if (volume == 0.0) {
-            errprintf ("none of the points strictly dominates the reference point\n");
-            exit (EXIT_FAILURE);
+            fatal_error("none of the points strictly dominates the reference point\n");
         }
-        time_elapsed = Timer_elapsed_virtual();
-        if (contributions_flag) {
-            fprint_hvc(outfile, hvc, cumsizes[n] - cumsize);
-        } else {
-            fprintf (outfile, indicator_printf_format "\n", volume);
-        }
+
+        double time_elapsed = Timer_elapsed_virtual ();
+
+        fprintf (outfile, indicator_printf_format "\n", volume);
         if (verbose_flag >= 2)
             fprintf (outfile, "# Time: %f seconds\n", time_elapsed);
     }
-    if (contributions_flag)
-        free(hvc);
-    free(data);
-    free(cumsizes);
 
     if (outfilename) {
         if (verbose_flag)
@@ -208,13 +192,20 @@ hv_file (const char *filename, double *reference,
         fclose (outfile);
         free (outfilename);
     }
+    free ((void *) maximise);
+    free (data);
+    free (cumsizes);
+    if (needs_minimum) {
+        free (minimum);
+        free (maximum);
+    }
     *nobj_p = nobj;
 }
 
 int main(int argc, char *argv[])
 {
     /* See the man page for getopt_long for an explanation of these fields.  */
-    static const char short_options[] = "hVvqucr:s:S";
+    static const char short_options[] = "hVvqur:s:n:m:S:";
     static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
         {"version",    no_argument,       NULL, 'V'},
@@ -222,8 +213,10 @@ int main(int argc, char *argv[])
         {"quiet",      no_argument,       NULL, 'q'},
         {"reference",  required_argument, NULL, 'r'},
         {"union",      no_argument,       NULL, 'u'},
-        {"contributions", no_argument,    NULL, 'c'},
         {"suffix",     required_argument, NULL, 's'},
+        {"method",     required_argument, NULL, 'm'},
+        {"nsamples",   required_argument, NULL, 'n'},
+        {"seed",       required_argument, NULL, 'S'},
         {NULL, 0, NULL, 0} /* marks end of list */
     };
 
@@ -231,6 +224,9 @@ int main(int argc, char *argv[])
 
     double *reference = NULL;
     int nobj = 0;
+    uint32_t seed = 0;
+    uint_fast32_t nsamples = 0;
+    enum approx_method_t hv_approx_method = DZ2019_HW;
 
     int opt; /* it's actually going to hold a char.  */
     int longopt_index;
@@ -245,32 +241,73 @@ int main(int argc, char *argv[])
               union_flag = true;
               break;
 
-          case 'c': // --contributions
-              contributions_flag = true;
-              break;
-
           case 's': // --suffix
               suffix = optarg;
               break;
 
-          case 'q': // --quiet
-              verbose_flag = 0;
+          case 'n': { // --nsamples
+              char *endp;
+              long int value = strtol(optarg, &endp, 10);
+              if (endp == optarg || *endp != '\0' || value <= 0 || value == LONG_MAX) {
+                  fatal_error("value of --nsamples must be a positive integer '%s'", optarg);
+              }
+              nsamples = (uint_fast32_t) value;
+              break;
+          }
+
+          case 'm': // --method
+              switch (*optarg) {
+                case '1':
+                    hv_approx_method = DZ2019_MC; break;
+                case '2':
+                    hv_approx_method = DZ2019_HW; break;
+                default:
+                    fatal_error("valid values of --method (-m) are: 1 or 2, not '%s'", optarg);
+              }
               break;
 
-          case 'v': // --verbose
-              verbose_flag = 2;
+          case 'S': {// --seed
+              char *endp;
+              long int value = strtol(optarg, &endp, 10);
+              if (endp == optarg || *endp != '\0' || value <= 0) {
+                  fatal_error("value of --seed must be a positive integer '%s'", optarg);
+              }
+              seed = (uint32_t) value;
               break;
+          }
+        case 'q': // --quiet
+            verbose_flag = 0;
+            break;
 
-          default:
-              default_cmdline_handler(opt);
+        case 'v': // --verbose
+            verbose_flag = 2;
+            break;
+
+        default:
+            default_cmdline_handler(opt);
         }
     }
 
+    if (nsamples == 0) {
+        fatal_error("must specify a value for --nsamples, for example, --nsamples 100000");
+    }
+
+    if (seed == 0) {
+        if (hv_approx_method == DZ2019_MC)
+            seed = (uint32_t) time(NULL);
+    } else if (hv_approx_method == DZ2019_HW) {
+        fatal_error("cannot use --seed with --method=2");
+    }
+
+    if (verbose_flag >= 2)
+        printf("# seed: %"PRIu32 "\n# nsamples: %lu\n", seed, (unsigned long) nsamples);
+
     int numfiles = argc - optind;
     if (numfiles < 1) /* Read stdin.  */
-        hv_file (NULL, reference, NULL, NULL, &nobj);
+        hvapprox_file(NULL, reference, NULL, NULL, &nobj, nsamples, hv_approx_method, seed);
+
     else if (numfiles == 1) {
-        hv_file (argv[optind], reference, NULL, NULL, &nobj);
+        hvapprox_file (argv[optind], reference, NULL, NULL, &nobj, nsamples, hv_approx_method, seed);
     } else {
         int k;
         double *maximum = NULL;
@@ -291,7 +328,7 @@ int main(int argc, char *argv[])
             }
         }
         for (k = 0; k < numfiles; k++)
-            hv_file (argv[optind + k], reference, maximum, minimum, &nobj);
+            hvapprox_file (argv[optind + k], reference, maximum, minimum, &nobj, nsamples, hv_approx_method, seed);
 
         free(minimum);
         free(maximum);

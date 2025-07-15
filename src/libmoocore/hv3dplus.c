@@ -3,25 +3,11 @@
  ------------------------------------------------------------------------------
 
                         Copyright (c) 2013, 2016, 2017
-                Andreia P. Guerreiro <apg@dei.uc.pt>
+                     Andreia P. Guerreiro <apg@dei.uc.pt>
 
- This program is free software (software libre); you can redistribute
- it and/or modify it under the terms of the GNU General Public License
- as published by the Free Software Foundation; either version 3 of the
- License.
-
- This program is distributed in the hope that it will be useful, but
- WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program; if not, you can obtain a copy of the GNU
- General Public License at:
-                 http://www.gnu.org/copyleft/gpl.html
- or by writing to:
-           Free Software Foundation, Inc., 59 Temple Place,
-                 Suite 330, Boston, MA 02111-1307 USA
+ This Source Code Form is subject to the terms of the Mozilla Public
+ License, v. 2.0. If a copy of the MPL was not distributed with this
+ file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
  ------------------------------------------------------------------------------
 
@@ -120,7 +106,6 @@ preprocessing(dlnode_t * list, size_t n)
     node = new_avl_node(list + 1, tnodes + 2);
     avl_insert_before(&tree, nodeaux, node);
     assert(p->cnext[0] == nodeaux->prev->dlnode);
-
     assert(p->cnext[1] == nodeaux->next->dlnode);
 
     const dlnode_t * stop = list + 2;
@@ -177,8 +162,7 @@ hv3dplus(dlnode_t * list)
     restart_list_y(list);
     assert(list+2 == list->prev[0]);
 
-    double area = 0;
-    double volume = 0;
+    double area = 0, volume = 0;
     dlnode_t * p = (list+1)->next[0];
     const dlnode_t * stop = list+2;
     while (p != stop) {

@@ -2,42 +2,80 @@
 % Please edit documentation in R/eaf.R
 \name{eaf}
 \alias{eaf}
-\title{Exact computation of the EAF in 2D or 3D}
+\title{Exact computation of the Empirical Attainment Function (EAF)}
 \usage{
 eaf(x, sets, percentiles = NULL, maximise = FALSE, groups = NULL)
 }
 \arguments{
 \item{x}{\code{matrix()}|\code{data.frame()}\cr Matrix or data frame of numerical
-values, where each row gives the coordinates of a point. If \code{sets} is
-missing, the last column of \code{x} gives the sets.}
+values that represents multiple sets of points, where each row represents
+a point. If \code{sets} is missing, the last column of \code{x} gives the sets.}
 
-\item{sets}{\code{integer()}\cr A vector that indicates the set of each point in \code{x}. If
-missing, the last column of \code{x} is used instead.}
+\item{sets}{\code{integer()}\cr Vector that indicates the set of each point in
+\code{x}. If missing, the last column of \code{x} is used instead.}
 
-\item{percentiles}{\code{numeric()}\cr Vector indicating which percentiles are computed.
-\code{NULL} computes all.}
+\item{percentiles}{\code{numeric()}\cr Vector indicating which percentiles are
+computed.  \code{NULL} computes all.}
 
 \item{maximise}{\code{logical()}\cr Whether the objectives must be maximised
 instead of minimised. Either a single logical value that applies to all
 objectives or a vector of logical values, with one value per objective.}
 
-\item{groups}{\code{factor()}\cr Indicates that the EAF must be computed separately for data
-belonging to different groups.}
+\item{groups}{\code{factor()}\cr Indicates that the EAF must be computed
+separately for data belonging to different groups.}
 }
 \value{
-\code{data.frame()}\cr A data frame containing the exact representation of
-EAF. The last column gives the percentile that corresponds to each
+\code{data.frame()}\cr A data frame containing the exact representation
+of EAF. The last column gives the percentile that corresponds to each
 point. If groups is not \code{NULL}, then an additional column indicates to
 which group the point belongs.
 }
 \description{
-This function computes the EAF given a set of 2D or 3D points and a vector \code{set}
-that indicates to which set each point belongs.
+This function computes the EAF given a set of 2D or 3D points and a vector
+\code{set} that indicates to which set each point belongs.
+}
+\details{
+Given a set \eqn{A \subset \mathbb{R}^d}, the attainment function of
+\eqn{A}, denoted by \eqn{\alpha_{A}\colon \mathbb{R}^d\to \{0,1\}},
+specifies which points in the objective space are weakly dominated by
+\eqn{A}, where \eqn{\alpha_A(\vec{z}) = 1} if \eqn{\exists \vec{a} \in A,
+\vec{a} \leq \vec{z}}, and \eqn{\alpha_A(\vec{z}) = 0}, otherwise.
+
+Let \eqn{\mathcal{A} = \{A_1, \dots, A_n\}} be a multi-set of \eqn{n} sets
+\eqn{A_i \subset \mathbb{R}^d}, the EAF \citep{Grunert01,GruFon2009:emaa} is
+the function \eqn{\hat{\alpha}_{\mathcal{A}}\colon \mathbb{R}^d\to [0,1]},
+such that:
+
+\deqn{\hat{\alpha}_{\mathcal{A}}(\vec{z}) = \frac{1}{n}\sum_{i=1}^n \alpha_{A_i}(\vec{z})}
+
+The EAF is a coordinate-wise non-decreasing step function, similar to the
+empirical cumulative distribution function (ECDF)
+\citep{LopVerDreDoe2025}.  Thus, a finite representation of the EAF
+can be computed as the set of minima, in terms of Pareto optimality, with a
+value of the EAF not smaller than a given \eqn{t/n}, where
+\eqn{t=1,\dots,n} \citep{FonGueLopPaq2011emo}. Formally, the EAF can
+be represented by the sequence \eqn{(L_1, L_2, \dots, L_n)}, where:
+
+\deqn{L_t = \min \{\vec{z} \in \mathbb{R}^d : \hat{\alpha}_{\mathcal{A}}(\vec{z}) \geq t/n\}}
+
+It is also common to refer to the \eqn{k\% \in [0,100]} percentile. For
+example, the \emph{median} (or 50\%) attainment surface corresponds to
+\eqn{L_{\lceil n/2 \rceil}} and it is the lower boundary of the vector space
+attained by at least 50\% of the input sets \eqn{A_i}. Similarly, \eqn{L_1}
+is called the \emph{best} attainment surface (\eqn{\frac{1}{n}}\%) and
+represents the lower boundary of the space attained by at least one input
+set, whereas \eqn{L_{100}} is called the \emph{worst} attainment surface (100\%)
+and represents the lower boundary of the space attained by all input sets.
+
+In the current implementation, the EAF is computed using the algorithms
+proposed by \citet{FonGueLopPaq2011emo}, which have complexity \eqn{O(m\log
+m + nm)} in 2D and \eqn{O(n^2 m \log m)} in 3D, where \eqn{n} is the number
+of input sets and \eqn{m} is the total number of input points.
 }
 \note{
 There are several examples of data sets in
-\code{system.file(package="moocore","extdata")}.  The current implementation
-only supports two and three dimensional points.
+\code{system.file(package="moocore","extdata")}.  The current implementation only
+supports two and three dimensional points.
 }
 \examples{
 extdata_path <- system.file(package="moocore", "extdata")
@@ -58,11 +96,7 @@ z <- eaf(x[,1:3], sets = x[,4], groups = x[,5], percentiles = 50)
 str(z)
 }
 \references{
-\insertRef{Grunert01}{moocore}
-
-\insertRef{FonGueLopPaq2011emo}{moocore}
-
-\insertRef{LopVerDreDoe2025}{moocore}
+\insertAllCited{}
 }
 \seealso{
 \code{\link[=read_datasets]{read_datasets()}}

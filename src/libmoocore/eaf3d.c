@@ -5,29 +5,15 @@
 
  ---------------------------------------------------------------------
 
-    Copyright (c) 2009-2011
+    Copyright (c) 2009-2011, 2025
             Andreia Guerreiro <andreia.guerreiro@ist.utl.pt>
             Carlos M. Fonseca <cmfonsec@dei.uc.pt>
             Luis Paquete <paquete@dei.uc.pt>
             Manuel Lopez-Ibanez <manuel.lopez-ibanez@manchester.ac.uk>
 
- This program is free software; you can redistribute it and/or
- modify it under the terms of the GNU General Public License
- as published by the Free Software Foundation; either version 2
- of the License, or (at your option) any later version.
-
- This program is distributed in the hope that it will be useful,
- but WITHOUT ANY WARRANTY; without even the implied warranty of
- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- General Public License for more details.
-
- You should have received a copy of the GNU General Public License
- along with this program; if not, you can obtain a copy of the GNU
- General Public License at:
-                 http://www.gnu.org/copyleft/gpl.html
- or by writing to:
-           Free Software Foundation, Inc., 59 Temple Place,
-                 Suite 330, Boston, MA 02111-1307 USA
+ This Source Code Form is subject to the terms of the Mozilla Public
+ License, v. 2.0. If a copy of the MPL was not distributed with this
+ file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
  ----------------------------------------------------------------------
 
@@ -666,7 +652,7 @@ freetree(avl_tree_t *avltree)
     avl_node_t *aux, *aux2;
     aux=avltree->head;
 
-    if(aux){
+    if(aux){ // FIXME: Double check of aux?
         while(aux){
             aux2 = aux;
             aux = aux2->next;
@@ -689,9 +675,10 @@ freetree2(avl_tree_t *avltree)
     while(aux->next){
         aux2 = aux;
         aux = aux2->next;
+        // FIXME: aux2->time is not freed?
         free(aux2);
     }
-
+    // FIXME: Double free of aux->item
     free(aux->item);
     free(aux);
 
@@ -705,6 +692,7 @@ static void free_removed(removed_list_t * removed_list)
     while (node != NULL) {
         avl_node_t * aux = node;
         node = node->next;
+        // FIXME: Do not free aux->item? Same as freetree()?
         free(aux);
     }
     free(removed_list);
@@ -762,6 +750,14 @@ eaf3d (objective_t *data, const int *cumsize, int nruns,
             assert(cumsize[i-1] < cumsize[i]);
         );
 
+    /* FIXME: This seems wrong. It should be:
+       avl_tree_t * set = malloc (nruns * sizeof(*set));
+       avl_tree_t * level = malloc (nruns * sizeof(*level));
+       avl_tree_t * output = malloc (nruns * sizeof(*output));
+
+       This way we do not need to do avl_alloc_tree for each tree, which
+       creates a lot of small memory chunks.
+    */
     avl_tree_t **set = malloc (nruns * sizeof(avl_tree_t));
     avl_tree_t **level = malloc (nruns * sizeof(avl_tree_t));
     avl_tree_t **output = malloc (nruns * sizeof(avl_tree_t));

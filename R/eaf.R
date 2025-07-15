@@ -1,41 +1,78 @@
-#' Exact computation of the EAF in 2D or 3D
+#' Exact computation of the Empirical Attainment Function (EAF)
 #'
-#' This function computes the EAF given a set of 2D or 3D points and a vector `set`
-#' that indicates to which set each point belongs.
+#' This function computes the EAF given a set of 2D or 3D points and a vector
+#' `set` that indicates to which set each point belongs.
 #'
 #' @param x `matrix()`|`data.frame()`\cr Matrix or data frame of numerical
-#'   values, where each row gives the coordinates of a point. If `sets` is
-#'   missing, the last column of `x` gives the sets.
+#'   values that represents multiple sets of points, where each row represents
+#'   a point. If `sets` is missing, the last column of `x` gives the sets.
 #'
-#' @param sets `integer()`\cr A vector that indicates the set of each point in `x`. If
-#'   missing, the last column of `x` is used instead.
+#' @param sets `integer()`\cr Vector that indicates the set of each point in
+#'   `x`. If missing, the last column of `x` is used instead.
 #'
-#' @param percentiles `numeric()`\cr Vector indicating which percentiles are computed.
-#' `NULL` computes all.
+#' @param percentiles `numeric()`\cr Vector indicating which percentiles are
+#'   computed.  `NULL` computes all.
 #'
 #' @inheritParams is_nondominated
 #'
-#' @param groups `factor()`\cr Indicates that the EAF must be computed separately for data
-#'   belonging to different groups.
+#' @param groups `factor()`\cr Indicates that the EAF must be computed
+#'   separately for data belonging to different groups.
 #'
-#' @return `data.frame()`\cr A data frame containing the exact representation of
-#'   EAF. The last column gives the percentile that corresponds to each
+#' @return `data.frame()`\cr A data frame containing the exact representation
+#'   of EAF. The last column gives the percentile that corresponds to each
 #'   point. If groups is not `NULL`, then an additional column indicates to
 #'   which group the point belongs.
 #'
 #' @author  Manuel \enc{López-Ibáñez}{Lopez-Ibanez}
 #'
-#' @note There are several examples of data sets in
-#'   `system.file(package="moocore","extdata")`.  The current implementation
-#'   only supports two and three dimensional points.
+#' @details
+#'
+#' Given a set \eqn{A \subset \mathbb{R}^d}, the attainment function of
+#' \eqn{A}, denoted by \eqn{\alpha_{A}\colon \mathbb{R}^d\to \{0,1\}},
+#' specifies which points in the objective space are weakly dominated by
+#' \eqn{A}, where \eqn{\alpha_A(\vec{z}) = 1} if \eqn{\exists \vec{a} \in A,
+#' \vec{a} \leq \vec{z}}, and \eqn{\alpha_A(\vec{z}) = 0}, otherwise.
+#'
+#' Let \eqn{\mathcal{A} = \{A_1, \dots, A_n\}} be a multi-set of \eqn{n} sets
+#' \eqn{A_i \subset \mathbb{R}^d}, the EAF \citep{Grunert01,GruFon2009:emaa} is
+#' the function \eqn{\hat{\alpha}_{\mathcal{A}}\colon \mathbb{R}^d\to [0,1]},
+#' such that:
+#'
+#'  \deqn{\hat{\alpha}_{\mathcal{A}}(\vec{z}) = \frac{1}{n}\sum_{i=1}^n \alpha_{A_i}(\vec{z})}
+#'
+#' The EAF is a coordinate-wise non-decreasing step function, similar to the
+#' empirical cumulative distribution function (ECDF)
+#' \citep{LopVerDreDoe2025}.  Thus, a finite representation of the EAF
+#' can be computed as the set of minima, in terms of Pareto optimality, with a
+#' value of the EAF not smaller than a given \eqn{t/n}, where
+#' \eqn{t=1,\dots,n} \citep{FonGueLopPaq2011emo}. Formally, the EAF can
+#' be represented by the sequence \eqn{(L_1, L_2, \dots, L_n)}, where:
+#'
+#' \deqn{L_t = \min \{\vec{z} \in \mathbb{R}^d : \hat{\alpha}_{\mathcal{A}}(\vec{z}) \geq t/n\}}
+#'
+#' It is also common to refer to the \eqn{k\% \in [0,100]} percentile. For
+#' example, the *median* (or 50%) attainment surface corresponds to
+#' \eqn{L_{\lceil n/2 \rceil}} and it is the lower boundary of the vector space
+#' attained by at least 50% of the input sets \eqn{A_i}. Similarly, \eqn{L_1}
+#' is called the *best* attainment surface (\eqn{\frac{1}{n}}%) and
+#' represents the lower boundary of the space attained by at least one input
+#' set, whereas \eqn{L_{100}} is called the *worst* attainment surface (100%)
+#' and represents the lower boundary of the space attained by all input sets.
+#'
+#' In the current implementation, the EAF is computed using the algorithms
+#' proposed by \citet{FonGueLopPaq2011emo}, which have complexity \eqn{O(m\log
+#' m + nm)} in 2D and \eqn{O(n^2 m \log m)} in 3D, where \eqn{n} is the number
+#' of input sets and \eqn{m} is the total number of input points.
+#'
+#' @note
+#'
+#' There are several examples of data sets in
+#' `system.file(package="moocore","extdata")`.  The current implementation only
+#' supports two and three dimensional points.
 #'
 #' @references
 #'
-#' \insertRef{Grunert01}{moocore}
-#'
-#' \insertRef{FonGueLopPaq2011emo}{moocore}
-#'
-#' \insertRef{LopVerDreDoe2025}{moocore}
+#' \insertAllCited{}
 #'
 #'@seealso [read_datasets()]
 #'

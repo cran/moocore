@@ -4,6 +4,7 @@
 #include <string.h> // memcpy
 #include <math.h> // INFINITY
 #include "common.h"
+#include "sort.h"
 
 typedef const double avl_item_t;
 typedef struct avl_node_t {
@@ -74,37 +75,12 @@ cmp_double_asc_x_asc_y(const void * restrict p1, const void * restrict p2)
     return (x1 < x2) ? -1: ((x1 > x2) ? 1 : (y1 < y2 ? -1 : 1));
 }
 
-static inline int
-cmp_double_2d_asc (const void *p1, const void *p2)
-{
-    const double x1 = **(const double **)p1;
-    const double x2 = **(const double **)p2;
-    const double y1 = *(*(const double **)p1 + 1);
-    const double y2 = *(*(const double **)p2 + 1);
-    return (y1 < y2) ? -1 : ((y1 > y2) ? 1 :
-                             ((x1 < x2) ? -1 : ((x1 > x2) ? 1 : 0)));
-}
-
-static inline int
-cmp_double_3d_asc(const void *p1, const void *p2)
-{
-    const double x1 = **(const double **)p1;
-    const double x2 = **(const double **)p2;
-    const double y1 = *(*(const double **)p1 + 1);
-    const double y2 = *(*(const double **)p2 + 1);
-    const double z1 = *(*(const double **)p1 + 2);
-    const double z2 = *(*(const double **)p2 + 2);
-
-    return (z1 < z2) ? -1 : ((z1 > z2) ? 1 :
-                             ((y1 < y2) ? -1 : ((y1 > y2) ? 1 : ((x1 < x2) ? -1 : ((x1 > x2) ? 1 : 0)))));
-}
 
 static inline const double **
 generate_sorted_pp_2d(const double *points, size_t size)
 {
     const double **p = malloc (size * sizeof(*p));
-    p[0] = points;
-    for (size_t k = 1; k < size; k++)
+    for (size_t k = 0; k < size; k++)
         p[k] = points + 2 * k;
 
     qsort(p, size, sizeof(*p), &cmp_double_2d_asc);
@@ -115,8 +91,7 @@ static inline const double **
 generate_sorted_pp_3d(const double *points, size_t size)
 {
     const double **p = malloc (size * sizeof(*p));
-    p[0] = points;
-    for (size_t k = 1; k < size; k++)
+    for (size_t k = 0; k < size; k++)
         p[k] = points + 3 * k;
 
     qsort(p, size, sizeof(*p), &cmp_double_3d_asc);
@@ -536,15 +511,17 @@ filter_dominated_set (double *points, int dim, size_t size,
 }
 
 _attr_maybe_unused static bool *
-is_nondominated (const double * data, int nobj, int npoint, const bool * maximise, bool keep_weakly)
+is_nondominated(const double * data, int nobj, size_t npoint,
+                const bool * maximise, bool keep_weakly)
 {
     ASSUME(nobj >= 1);
     ASSUME(nobj <= 32);
     bool * nondom = nondom_init(npoint);
     const signed char * minmax = minmax_from_bool(nobj, maximise);
-    find_nondominated_set_(data, (dimension_t) nobj, (size_t) npoint, minmax, AGREE_NONE, nondom,
-                            /* find_dominated_p = */false,
-                            /* keep_weakly = */keep_weakly);
+    find_nondominated_set_(data, (dimension_t) nobj, npoint, minmax,
+                           AGREE_NONE, nondom,
+                           /* find_dominated_p = */false,
+                           /* keep_weakly = */keep_weakly);
     free((void *)minmax);
     return nondom;
 }
