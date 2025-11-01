@@ -47,11 +47,10 @@
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
 
-#include "epsilon.h"
 #include "nondominated.h"
+#include "epsilon.h"
 
 #include "cmdline.h"
-
 
 static bool verbose_flag = false;
 static bool additive_flag = true;
@@ -66,7 +65,7 @@ static void usage(void)
            program_invocation_short_name, program_invocation_short_name);
 
     printf(
-"Calculates the epsilon measure for the Pareto sets given as input\n\n"
+"Calculates the epsilon measure for the sets given as input\n\n"
 
 "Options:\n"
 OPTION_HELP_STR
@@ -119,10 +118,12 @@ do_file (const char *filename, double *reference, size_t reference_size,
         nruns = 1;
     }
 #endif
+    ASSUME(nobj > 1 && nobj < 256);
+    dimension_t dim = (dimension_t) nobj;
     /* Default minmax if not set yet.  */
     bool free_minmax = false;
     if (minmax == NULL) {
-        minmax = maximise_all_flag ? minmax_maximise(nobj) : minmax_minimise(nobj);
+        minmax = maximise_all_flag ? minmax_maximise(dim) : minmax_minimise(dim);
         free_minmax = true;
     }
 
@@ -133,12 +134,12 @@ do_file (const char *filename, double *reference, size_t reference_size,
         // double time_elapsed = 0;
         //Timer_start ();
         double epsilon = (additive_flag)
-            ? epsilon_additive_minmax (nobj,  minmax,
-                                       &data[nobj * cumsize], cumsizes[n] - cumsize,
-                                       reference, (int) reference_size)
-            : epsilon_mult_minmax (nobj,  minmax,
-                                   &data[nobj * cumsize], cumsizes[n] - cumsize,
-                                   reference, (int) reference_size);
+            ? epsilon_additive_minmax(minmax, dim,
+                                      &data[nobj * cumsize], cumsizes[n] - cumsize,
+                                      reference, reference_size)
+            : epsilon_mult_minmax(minmax, dim,
+                                  &data[nobj * cumsize], cumsizes[n] - cumsize,
+                                  reference, reference_size);
         //        time_elapsed = Timer_elapsed_virtual ();
         fprintf (outfile, indicator_printf_format "\n", epsilon);
         if ((additive_flag && epsilon < 0) || (!additive_flag && epsilon < 1)) {
@@ -258,7 +259,7 @@ int main(int argc, char *argv[])
         exit (EXIT_FAILURE);
     }
     if (minmax == NULL) {
-        minmax = maximise_all_flag ? minmax_maximise(nobj) : minmax_minimise(nobj);
+        minmax = maximise_all_flag ? minmax_maximise((dimension_t) nobj) : minmax_minimise((dimension_t) nobj);
     }
     if (check_flag) {
         /* Ensure the reference set is nondominated.  */

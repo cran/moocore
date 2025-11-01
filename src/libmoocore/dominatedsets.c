@@ -1,7 +1,7 @@
 /*************************************************************************
 
- Calculates the number of Pareto sets from one file that
- dominate the Pareto sets of the other files.
+ Calculates the number of sets from one file that dominate the sets of the
+ other files.
 
  ---------------------------------------------------------------------
 
@@ -48,8 +48,8 @@
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
 
-#include "epsilon.h"
 #include "nondominated.h"
+#include "epsilon.h"
 
 #define READ_INPUT_WRONG_INITIAL_DIM_ERRSTR "-o, --obj"
 #include "cmdline.h"
@@ -60,8 +60,7 @@ static void usage(void)
            "Usage: %s [OPTIONS] [FILE...]\n\n", program_invocation_short_name);
 
     printf(
-"Calculates the number of Pareto sets from one file that                    \n"
-"dominate the Pareto sets of the other files.                             \n\n"
+"Calculates the number of sets from one file that dominate the sets of the other files.\n\n"
 
 "Options:\n"
 OPTION_HELP_STR
@@ -264,7 +263,7 @@ pareto_better (int dim, const signed char *minmax,
         }
     }
 
-    int result2 = epsilon_additive_ind (dim, minmax, points_a, size_a, points_b, size_b);
+    int result2 = epsilon_additive_ind ((dimension_t) dim, minmax, points_a, size_a, points_b, size_b);
 
     DEBUG2 (
         printf ("result = %d, result2 = %d\n", result, result2);
@@ -392,7 +391,7 @@ int main(int argc, char *argv[])
 
     /* Default minmax if not set yet.  */
     if (minmax == NULL)
-        minmax = minmax_minimise(dim);
+        minmax = minmax_minimise((dimension_t) dim);
 
     /* Print filename substitutions.  */
     for (k = 0; k < numfiles; k++) {
@@ -430,9 +429,9 @@ int main(int argc, char *argv[])
             int size = 0;
             for (n = 0; n < nruns[k]; n++) {
                 size_t failed_pos
-                    = find_dominated_point (&points[k][dim * size], dim,
-                                            cumsizes[k][n] - size, minmax);
-                if (failed_pos < SIZE_MAX) {
+                    = find_dominated_point(&points[k][dim * size], dim,
+                                           cumsizes[k][n] - size, minmax);
+                if (failed_pos < (size_t)(cumsizes[k][n] - size)) {
                     fprintf (stderr,
                              "%s: %s: set %d: point %zu is dominated.\n",
                              program_invocation_short_name,

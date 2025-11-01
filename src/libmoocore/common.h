@@ -30,6 +30,9 @@ void warnprintf(const char *format,...) ATTRIBUTE_FORMAT_PRINTF(1, 2);
     } while(0)
 #endif // R_PACKAGE
 
+#define MOOCORE_STRINGIFY(name) #name
+#define MOOCORE_STRINGIFY_MACRO(macro) MOOCORE_STRINGIFY(macro)
+
 #include <stdbool.h>
 static inline void *
 moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
@@ -47,30 +50,7 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 
 #define MOOCORE_MALLOC(NMEMB, TYPE) moocore_malloc((NMEMB), sizeof(TYPE), __FILE__, __LINE__)
 
-#if (defined(__GNUC__) && __GNUC__ >= 3) || defined(__clang__)
-#define __cmp_op_min <
-#define __cmp_op_max >
-#define __cmp(op, x, y) ((x) __cmp_op_##op (y) ? (x) : (y))
-#define __careful_cmp(op, x, y) __extension__({       \
-            __auto_type _x__ = (x);                   \
-            __auto_type _y__ = (y);                   \
-            (void) (&_x__ == &_y__);                  \
-            __cmp(op, _x__, _y__); })
-
-#define MAX(x,y) __careful_cmp(max, x, y)
-#define MIN(x,y) __careful_cmp(min, x, y)
-
-#define CLAMP(x, xmin, xmax) __extension__({                                   \
-            __auto_type _x__ = (x);                                            \
-            __typeof__(_x__) _xmin__ = (xmin);                                 \
-            __typeof__(_x__) _xmax__ = (xmax);                                 \
-            _x__ <= _xmin__ ? _xmin__ : _x__ >= _xmax__ ? _xmax__ : _x__; })
-#else
-#define MAX(x,y) ((x) > (y) ? (x) : (y))
-#define MIN(x,y) ((x) < (y) ? (x) : (y))
-#define CLAMP(x, xmin, xmax) (MAX((xim), (MIN((x), (xmax)))))
-#endif
-
+#include "maxminclamp.h"
 
 #define DEBUG_DO(X)     do{ X;} while(0)
 #define DEBUG_NOT_DO(X) while(0){ X;}
@@ -126,7 +106,7 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 */
 
 #ifndef ignore_unused_result
-#define ignore_unused_result(X)  do { if(X) {}} while(0);
+#define ignore_unused_result(X)  do { if (X){}} while (0);
 #endif
 
 #ifdef __cplusplus
@@ -135,69 +115,27 @@ moocore_malloc(size_t nmemb, size_t size, const char *file, int line)
 #define STATIC_CAST(TYPE,OP) ((TYPE)(OP))
 #endif
 
-/* FIXME: Move this to a better place: matrix.h ? */
-/* FIXME: Measure if this is faster than the R implementation of t()  */
-static inline void
-matrix_transpose_double(double *dst, const double *src,
-                        const size_t nrows, const size_t ncols)
-{
-    size_t j, i, pos = 0;
-    for (j = 0; j < ncols; j++) {
-        for (i = 0; i < nrows; i++) {
-            dst[pos] = src[j + i * ncols];
-            pos++;
-        }
-    }
-}
-
 #include <stdint.h>
 typedef uint_fast8_t dimension_t;
 
-/* FIXME: Move this to nondominated.h */
-enum objs_agree_t { AGREE_MINIMISE = -1, AGREE_NONE = 0, AGREE_MAXIMISE = 1 };
-
-static inline enum objs_agree_t
-check_all_minimize_maximize(const signed char * restrict minmax, dimension_t dim)
+/* FIXME: Move this to a better place: matrix.h ? */
+static inline void
+matrix_transpose_double(double * restrict dst, const double * restrict src,
+                        const size_t nrows, const size_t ncols)
 {
-    bool all_minimize = true, all_maximize = true;
-    for (dimension_t d = 0; d < dim; d++) {
-        if (minmax[d] < 0) {
-            all_maximize = false;
-        } else if (minmax[d] > 0) {
-            all_minimize = false;
-        } else {
-            all_minimize = false;
-            all_maximize = false;
-            break;
-        }
-    }
-    assert(!all_maximize || !all_minimize);
-    if (all_minimize) return AGREE_MINIMISE;
-    if (all_maximize) return AGREE_MAXIMISE;
-    return AGREE_NONE;
-}
+    ASSUME(nrows < SIZE_MAX/2 && ncols < SIZE_MAX/2);
+    if (nrows <= 0 || ncols <= 0)
+        return;
 
-/* Convert from bool vector to minmax vector.  */
-static inline signed char *
-minmax_from_bool(int nobj, const bool * restrict maximise)
-{
-    // unsigned int to fix -Walloc-larger-than= warning.
-    signed char * minmax = malloc(sizeof(signed char) * (unsigned int) nobj);
-    for (int k = 0; k < nobj; k++) {
-        minmax[k] = (maximise[k]) ? AGREE_MAXIMISE : AGREE_MINIMISE;
-    }
-    return minmax;
-}
+    const size_t len_1 = (nrows * ncols) - 1;
+    size_t i = 0, j = 0;
+    for (; j <= len_1; i++, j += nrows)
+        dst[j] = src[i];
 
-static inline bool *
-new_bool_maximise(dimension_t nobj, bool maximise_all)
-{
-    ASSUME(nobj > 0);
-    ASSUME(nobj < 128);
-    bool * maximise = malloc(sizeof(bool) * nobj);
-    for (dimension_t k = 0; k < nobj; k++)
-        maximise[k] = maximise_all;
-    return maximise;
+    for (; i <= len_1; i++, j += nrows) {
+	    if (j > len_1) j -= len_1;
+	    dst[j] = src[i];
+	}
 }
 
 #endif 	    /* !MOOCORE_COMMON_H_ */

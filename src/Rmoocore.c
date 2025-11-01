@@ -310,18 +310,29 @@ normalise_C(SEXP DATA, SEXP RANGE, SEXP LBOUND, SEXP UBOUND, SEXP MAXIMISE)
     return R_NilValue;
 }
 
+static inline double *
+matrix_malloc_and_transpose(const double * restrict rdata, size_t npoint, size_t nobj)
+{
+    double * data = malloc(npoint * nobj * sizeof(*data));
+    // We go from column-major (R) to row-major (C), so we have to switch the arguments.
+    matrix_transpose_double(data, rdata, nobj, npoint);
+    return data;
+}
+
 SEXP
 is_nondominated_C(SEXP DATA, SEXP MAXIMISE, SEXP KEEP_WEAKLY)
 {
     int nprotected = 0;
-    /* We transpose the matrix before calling this function. */
-    SEXP_2_DOUBLE_MATRIX(DATA, data, nobj, npoint);
+    // We DO NOT transpose the matrix before calling this function.
+    SEXP_2_DOUBLE_MATRIX(DATA, rdata, npoint, nobj);
     SEXP_2_LOGICAL_BOOL_VECTOR(MAXIMISE, maximise, maximise_len);
     SEXP_2_LOGICAL(KEEP_WEAKLY, keep_weakly);
-    assert (nobj == maximise_len);
+    assert(nobj == maximise_len);
 
-    bool * bool_is_nondom = is_nondominated(data, nobj, (size_t) npoint, maximise, keep_weakly);
-    free (maximise);
+    double * data = matrix_malloc_and_transpose(rdata, npoint, nobj);
+    bool * bool_is_nondom = is_nondominated(data, nobj, npoint, maximise, keep_weakly);
+    free(data);
+    free(maximise);
 
     new_logical_vector (is_nondom, npoint);
     bool_2_logical_vector(is_nondom, bool_is_nondom, npoint);
@@ -331,19 +342,41 @@ is_nondominated_C(SEXP DATA, SEXP MAXIMISE, SEXP KEEP_WEAKLY)
 }
 
 SEXP
+any_dominated_C(SEXP DATA, SEXP MAXIMISE)
+{
+    int nprotected = 0;
+    // We DO NOT transpose the matrix before calling this function.
+    SEXP_2_DOUBLE_MATRIX(DATA, rdata, npoint, nobj);
+    SEXP_2_LOGICAL_BOOL_VECTOR(MAXIMISE, maximise, maximise_len);
+    assert(nobj == maximise_len);
+
+    if (unlikely(npoint == 1))
+        return Rf_ScalarLogical(0);
+    // With a single-objective, if there are more than one row, then something
+    // is dominated.
+    if (unlikely(nobj == 1))
+        return Rf_ScalarLogical(1);
+
+    double * data = matrix_malloc_and_transpose(rdata, npoint, nobj);
+    size_t res = find_weakly_dominated_point(data, nobj, (size_t) npoint, maximise);
+    free(data);
+    free(maximise);
+    UNPROTECT(nprotected);
+    return Rf_ScalarLogical((res < npoint) ? 1 : 0);
+}
+
+SEXP
 pareto_ranking_C(SEXP DATA)
 {
     int nprotected = 0;
     /* We transpose the matrix before calling this function. */
     SEXP_2_DOUBLE_MATRIX(DATA, data, nobj, npoint);
 
-    /* FIXME: How to assign directly? */
-    new_int_vector (rank, npoint);
-    int * rank2 = pareto_rank(data, nobj, npoint);
-    for (int i = 0; i < npoint; i++) {
-        rank[i] = rank2[i];
-    }
-    free (rank2);
+    new_int_vector(rank, npoint);
+    int * restrict rank2 = pareto_rank(data, npoint, nobj);
+    for (int i = 0; i < npoint; i++)
+        rank[i] = rank2[i] + 1; // pareto_rank returns 0-based ranks.
+    free(rank2);
     UNPROTECT(nprotected);
     return Rexp(rank);
 }
@@ -363,14 +396,15 @@ hypervolume_C(SEXP DATA, SEXP REFERENCE)
 }
 
 SEXP
-hv_contributions_C(SEXP DATA, SEXP REFERENCE)
+hv_contributions_C(SEXP DATA, SEXP REFERENCE, SEXP IGNORE_DOMINATED)
 {
     int nprotected = 0;
     SEXP_2_DOUBLE_MATRIX(DATA, data, nobj, npoint);
     SEXP_2_DOUBLE_VECTOR(REFERENCE, reference, reference_len);
     assert (nobj == reference_len);
+    bool ignore_dominated = SEXP_is_true(IGNORE_DOMINATED);
     new_real_vector(hv, npoint);
-    hv_contributions(hv, data, nobj, npoint, reference);
+    hv_contributions(hv, data, nobj, npoint, reference, ignore_dominated);
     UNPROTECT (nprotected);
     return Rexp(hv);
 }

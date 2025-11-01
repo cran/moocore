@@ -6,8 +6,6 @@
 #include "pow_int.h"
 #include "rng.h"
 
-static inline long double fractl(long double x) { return x - truncl(x); }
-
 #define ALMOST_ZERO_WEIGHT 1e-20
 
 #ifndef M_PIl
@@ -20,47 +18,55 @@ static inline long double fractl(long double x) { return x - truncl(x); }
 # define M_PI_4l	0.785398163397448309615660845819875721L /* pi/4 */
 #endif
 
+// Returns fractional part. Equivalent to modfl(x, &dummy) but slightly faster.
+_attr_const_func
+static inline long double fractl(long double x) { return x - truncl(x); }
+
+
 static double *
-transform_and_filter(const double * restrict data, dimension_t dim, size_t * restrict npoints_p,
-                     const double * restrict ref, const bool * restrict maximise)
+transform_and_filter(const double * restrict data, size_t * restrict npoints_p,
+                     dimension_t dim, const double * restrict ref,
+                     const bool * restrict maximise)
 {
     size_t npoints = *npoints_p;
     double * points = malloc(dim * npoints * sizeof(double));
     size_t i, j;
-    dimension_t k;
     // Transform points (ref - points)
     for (i = 0, j = 0; i < npoints; i++) {
+        double * restrict p = points + j * dim;
+        const double * restrict src = data + i * dim;
+        dimension_t k;
         for (k = 0; k < dim; k++) {
-            points[j * dim + k] = ref[k] - data[i * dim + k];
-            if (maximise[k])
-                points[j * dim + k] = -points[j * dim + k];
+            p[k] = maximise[k] ? (src[k] - ref[k]) : (ref[k] - src[k]);
             // Filter out dominated points (must be >0 in all objectives)
-            if (points[j * dim + k] <= 0)
+            if (p[k] <= 0)
                 break;
         }
         if (k == dim)
             j++;
     }
     *npoints_p = j;
-    if (*npoints_p == 0) {
-        free (points);
+    if (j == 0) {
+        free(points);
         return NULL;
     }
     return points;
 }
 
+_attr_optimize_finite_math // Required so that GCC will vectorize the inner loop.
 static inline double
-get_expected_value(const double * restrict points, dimension_t dim, size_t npoints,
-                   const double * restrict w)
+get_expected_value(const double * restrict points, size_t npoints,
+                   dimension_t dim, const double * restrict w)
 {
     ASSUME(1 <= dim && dim <= 32);
-    ASSUME(npoints >= 1);
+    ASSUME(npoints > 0);
     // points >= 0 && w >=0 so max_s_w cannot be < 0.
     double max_s_w = 0;
     for (size_t i = 0; i < npoints; i++) {
-        double min_ratio = points[i * dim + 0] * w[0];
+        const double * restrict p = points + i * dim;
+        double min_ratio = p[0] * w[0];
         for (dimension_t k = 1; k < dim; k++) {
-            double ratio = points[i * dim + k] * w[k];
+            double ratio = p[k] * w[k];
             min_ratio = MIN(min_ratio, ratio);
         }
         max_s_w = MAX(max_s_w, min_ratio);
@@ -151,6 +157,16 @@ static const long double sphere_area_div_2_pow_d_times_d[] = {
     0x1.20c62c2f2d7f4a970cb97b8e179a6943fd21ba7509p-50L, // d = 32, value = 1.001886461636272e-15
 };
 
+_attr_pure_func static double
+euclidean_norm(const double * restrict w, dimension_t dim)
+{
+    ASSUME(dim >= 2 && dim <= 32);
+    double norm = (w[0] * w[0]) + (w[1] * w[1]);
+    for (dimension_t k = 2; k < dim; k++)
+        norm += w[k] * w[k];
+    return sqrt(norm);
+}
+
 /* Hypervolume approximation DZ2019-MC.
 
    Jingda Deng, Qingfu Zhang (2019). “Approximating Hypervolume and Hypervolume
@@ -162,39 +178,35 @@ hv_approx_normal(const double * restrict data, int nobjs, int n,
                  const double * restrict ref, const bool * restrict maximise,
                  uint_fast32_t nsamples, uint32_t random_seed)
 {
-    ASSUME(nobjs > 1);
-    ASSUME(nobjs < 32);
+    ASSUME(nobjs > 1 && nobjs < 32);
     ASSUME(n >= 0);
     const dimension_t dim = (dimension_t) nobjs;
     size_t npoints = (size_t) n;
-    const double * points = transform_and_filter(data, dim, &npoints, ref, maximise);
+    const double * points = transform_and_filter(data, &npoints, dim, ref, maximise);
     if (points == NULL)
         return 0;
 
     rng_state * rng = rng_new(random_seed);
-    double * w = malloc(dim * sizeof(double));
+    double * w = malloc(dim * sizeof(*w));
     double expected = 0.0;
     // Monte Carlo sampling.
     for (uint_fast32_t j = 0; j < nsamples; j++) {
-        dimension_t k;
         // Generate random weights in positive orthant.
         // Reference: Marsaglia, G. (1972). "Choosing a Point from the Surface
         // of a Sphere". Annals of Mathematical Statistics. 43 (2): 645-646.
-        for (k = 0; k < dim; k++) {
-            w[k] = fabs(rng_standard_normal(rng));
-            if (w[k] <= ALMOST_ZERO_WEIGHT) // Avoid division by zero later.
-                w[k] = ALMOST_ZERO_WEIGHT;
+        for (dimension_t k = 0; k < dim; k++)
+            w[k] = rng_standard_normal(rng);
+        for (dimension_t k = 0; k < dim; k++) {
+            w[k] = fabs(w[k]);
+            w[k] = MAX(w[k], ALMOST_ZERO_WEIGHT); // Avoid division by zero later.
         }
-        double norm = 0.0;
-        for (k = 0; k < dim; k++)
-            norm += w[k] * w[k];
-        norm = sqrt(norm);
-        for (k = 0; k < dim; k++) {
+        double norm = euclidean_norm(w, dim);
+        for (dimension_t k = 0; k < dim; k++) {
             // 1 / (w[k] / norm) so we avoid the division when calculating the
             // ratio below.
             w[k] = norm / w[k];
         }
-        expected += get_expected_value(points, dim, npoints, w);
+        expected += get_expected_value(points, npoints, dim, w);
     }
     free(w);
     free(rng);
@@ -218,7 +230,7 @@ construct_polar_a(dimension_t dim, uint_fast32_t nsamples)
     const dimension_t p = primes[dim];
     DEBUG2_PRINT("construct_polar_a: prime: %u\n", (unsigned int)p);
 
-    uint_fast32_t * a = malloc(dim * sizeof(uint_fast32_t));
+    uint_fast32_t * a = malloc(dim * sizeof(*a));
     a[0] = 1;
     DEBUG2_PRINT("construct_polar_a: a[%u] = %lu",
                  (unsigned int) dim, (unsigned long) a[0]);
@@ -233,15 +245,15 @@ construct_polar_a(dimension_t dim, uint_fast32_t nsamples)
 }
 
 static void
-compute_polar_sample(long double * sample, dimension_t dim,
+compute_polar_sample(long double * restrict sample, dimension_t dim,
                      uint_fast32_t i, uint_fast32_t nsamples,
-                     const uint_fast32_t * a)
+                     const uint_fast32_t * restrict a)
 {
     ASSUME(i + 1 <= nsamples);
     if (i + 1 < nsamples) {
         long double factor = (i+1) / STATIC_CAST(long double, nsamples);
         for (dimension_t k = 0; k < dim; k++) {
-            long double val = (factor * a[k]);
+            long double val = factor * a[k];
             sample[k] = fractl(val);
         }
     } else { // Last point is always 0.
@@ -310,7 +322,7 @@ for n, integral in results.items():
     c_code = custom_ccode(integral)
     print(f'case {n}:\n    return {c_code};')
 ``` */
-static double
+_attr_const_func static double
 int_of_power_of_sin_from_0_to_b(dimension_t m, double b)
 {
 #define POW fast_pow_uint_max32
@@ -431,6 +443,41 @@ static const long double int_power_of_sin_from_0_to_half_pi[] = {
     /* d =  0 */ M_PI_2l,
     /* d =  1 */ 1.L,
     /* d =  2 */ M_PI_4l,
+/* GCC on powerpc cannot fold some floating-point expressions involving IBM
+   long double into constant initializers, unless -ffast-math is enabled.  See
+   https://gcc.gnu.org/PR19779 */
+#if defined(__GNUC__) && (defined(__PPC__) || defined(__POWERPC__) || defined(__ppc__))
+    /* d =  3 */ 2. / 3.,
+    /* d =  4 */ 3.L * M_PI / 16.L,
+    /* d =  5 */ 8. / 15.,
+    /* d =  6 */ 5.L * M_PI / 32.L,
+    /* d =  7 */ 16. / 35.,
+    /* d =  8 */ 35.L * M_PI / 256.L,
+    /* d =  9 */ 128. / 315.,
+    /* d = 10 */ 63.L * M_PI / 512.L,
+    /* d = 11 */ 256. / 693.,
+    /* d = 12 */ 231.L * M_PI / 2048.L,
+    /* d = 13 */ 1024. / 3003.,
+    /* d = 14 */ 429.L * M_PI / 4096.L,
+    /* d = 15 */ 2048. / 6435.,
+    /* d = 16 */ 6435.L * M_PI / 65536.L,
+    /* d = 17 */ 32768. / 109395.,
+    /* d = 18 */ 12155.L * M_PI / 131072.L,
+    /* d = 19 */ 65536. / 230945.,
+    /* d = 20 */ 46189.L * M_PI / 524288.L,
+    /* d = 21 */ 262144. / 969969.,
+    /* d = 22 */ 88179.L * M_PI / 1048576.L,
+    /* d = 23 */ 524288. / 2028117.,
+    /* d = 24 */ 676039.L * M_PI / 8388608.L,
+    /* d = 25 */ 4194304. / 16900975.,
+    /* d = 26 */ 1300075.L * M_PI / 16777216.L,
+    /* d = 27 */ 8388608. / 35102025.,
+    /* d = 28 */ 5014575.L * M_PI / 67108864.L,
+    /* d = 29 */ 33554432. / 145422675.,
+    /* d = 30 */ 9694845.L * M_PI / 134217728.L,
+    /* d = 31 */ 67108864. / 300540195.,
+    /* d = 32 */ 300540195.L * M_PI / 4294967296.L
+#else
     /* d =  3 */ 2 / 3.L,
     /* d =  4 */ 3 * M_PIl / 16,
     /* d =  5 */ 8 / 15.L,
@@ -461,10 +508,11 @@ static const long double int_power_of_sin_from_0_to_half_pi[] = {
     /* d = 30 */ 9694845 * M_PIl / 134217728.L,
     /* d = 31 */ 67108864 / 300540195.L,
     /* d = 32 */ 300540195 * M_PIl / 4294967296
+#endif
 };
 
 // Solve inverse integral of power of sin.
-static long double
+_attr_const_func static long double
 solve_inverse_int_of_power_sin(long double theta, dimension_t dim)
 {
     long double x = M_PI_2l;
@@ -509,7 +557,8 @@ compute_int_all(dimension_t dm1)
 }
 
 static void
-compute_theta(long double *theta, dimension_t dim, const long double *int_all)
+compute_theta(long double * restrict theta, dimension_t dim,
+              const long double * restrict int_all)
 {
     ASSUME(dim >= 2);
     ASSUME(dim <= 32);
@@ -521,8 +570,8 @@ compute_theta(long double *theta, dimension_t dim, const long double *int_all)
 }
 
 static void
-compute_hua_wang_direction(double * direction, dimension_t dim,
-                           const long double * theta)
+compute_hua_wang_direction(double * restrict direction, dimension_t dim,
+                           const long double * restrict theta)
 {
     ASSUME(dim >= 2);
     ASSUME(dim <= 32);
@@ -555,12 +604,11 @@ hv_approx_hua_wang(const double * restrict data, int nobjs, int n,
                    const double * restrict ref, const bool * restrict maximise,
                    uint_fast32_t nsamples)
 {
-    ASSUME(nobjs > 1);
-    ASSUME(nobjs < 32);
+    ASSUME(nobjs > 1 && nobjs < 32);
     ASSUME(n >= 0);
     const dimension_t dim = (dimension_t) nobjs;
     size_t npoints = (size_t) n;
-    const double * points = transform_and_filter(data, dim, &npoints, ref, maximise);
+    const double * points = transform_and_filter(data, &npoints, dim, ref, maximise);
     if (points == NULL)
         return 0;
 
@@ -569,14 +617,14 @@ hv_approx_hua_wang(const double * restrict data, int nobjs, int n,
     double expected = 0.0;
     // FIXME: OpenMP: #pragma omp parallel
     {
-        long double * theta = malloc((dim - 1) * sizeof(long double));
-        double * w = malloc(dim * sizeof(double));
+        long double * theta = malloc((dim - 1) * sizeof(*theta));
+        double * w = malloc(dim * sizeof(*w));
         // FIXME: Add OpenMP: #pragma omp for reduction(+:expected)
         for (uint_fast32_t j = 0; j < nsamples; j++) {
             compute_polar_sample(theta, dim - 1, j, nsamples, polar_a);
             compute_theta(theta, dim, int_all);
             compute_hua_wang_direction(w, dim, theta);
-            expected += get_expected_value(points, dim, npoints, w);
+            expected += get_expected_value(points, npoints, dim, w);
         }
         free(theta);
         free(w);

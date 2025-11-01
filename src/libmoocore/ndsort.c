@@ -35,6 +35,7 @@
 #include <getopt.h> // for getopt_long()
 #include <math.h>  // for INFINITY
 
+#include "common.h"
 #include "hv.h"
 #include "nondominated.h" // for normalise()
 
@@ -191,14 +192,14 @@ int main(int argc, char *argv[])
 
     /* Default minmax if not set yet.  */
     if (minmax == NULL)
-        minmax = minmax_minimise(dim);
+        minmax = minmax_minimise((dimension_t) dim);
 
     if (verbose_flag) {
         printf ("# file: %s\n", filename);
         printf ("# points: %d\n", size);
     }
 
-    int * rank = pareto_rank (points, dim, size);
+    int * rank = pareto_rank(points, size, dim);
 
     if (only_rank_flag) {
         fprint_rank (stdout, rank, size);
@@ -247,8 +248,8 @@ int main(int argc, char *argv[])
                        lower_range, upper_range,
                        lbound, ubound);
 
-            double *hvc = malloc (sizeof(double) * data_size);
-            hv_contributions (hvc, data, dim, data_size, ref);
+            double *hvc = malloc(sizeof(double) * data_size);
+            hv_contributions(hvc, data, dim, data_size, ref, /*ignore_dominated=*/true);
             /* FIXME: handle uevs: keep_uevs_flag ? uev : NULL);*/
             for (int k = 0, j = 0; k < size; k++) {
                 if (rank[k] != i) continue;

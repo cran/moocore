@@ -56,9 +56,12 @@
    definition than the const attribute: pure allows the function to read any
    non-volatile memory, even if it changes in between successive invocations of
    the function.  */
-#ifndef __pure_func
-# define __pure_func __attribute__((__pure__))
+#if defined(__GNUC__) || defined(__clang__ ) || defined(__ICC)
+#  define _attr_pure_func __attribute__((pure))
+#else
+#  define _attr_pure_func
 #endif
+
 
 /* The noreturn keyword tells the compiler to assume that function cannot
    return. It can then optimize without regard to what would happen if fatal
@@ -83,8 +86,8 @@
    long as the old pointer is never referred to (including comparing
    it to the new pointer) after the function returns a non-NULL
    value.  */
-#ifndef __malloc
-# define __malloc	__attribute__((__malloc__))
+#ifndef _attr_malloc
+# define _attr_malloc	__attribute__((__malloc__))
 #endif
 
 /* The warn_unused_result attribute causes a warning to be emitted if
@@ -177,7 +180,7 @@
 // C++ standard attribute
 # if defined(__clang__)
 #  define INTERNAL_ASSUME(EXPR) __builtin_assume(EXPR)
-# elif defined(_MSC_VER)
+# elif defined(_MSC_VER) || defined(__ICC)
 #  define INTERNAL_ASSUME(EXPR) __assume(EXPR)
 # elif defined(__GNUC__) && __GNUC__ >= 13
 #  define INTERNAL_ASSUME(EXPR) __attribute__((__assume__(EXPR)))
@@ -203,6 +206,25 @@
 #  include <stdlib.h>
 #  define unreachable() do { assert(0); abort(); } while(0)
 # endif
+#endif
+
+
+#define PRAGMA(m_token_sequence) _Pragma(#m_token_sequence)
+
+#ifdef __ICC
+#define PRAGMA_ASSUME_NO_VECTOR_DEPENDENCY PRAGMA(ivdep)
+#elif defined(__GNUC__)  && __GNUC__ >= 5
+#define PRAGMA_ASSUME_NO_VECTOR_DEPENDENCY PRAGMA(GCC ivdep)
+#else
+#define PRAGMA_ASSUME_NO_VECTOR_DEPENDENCY
+#endif
+
+// Earlier versions miscompile with this attribute.
+#if defined(__GNUC__)  && __GNUC__ >= 13 && defined(__OPTIMIZE__)
+#define _attr_optimize_finite_math                                             \
+    __attribute__((optimize("no-signed-zeros", "finite-math-only")))
+#else
+#define _attr_optimize_finite_math /* nothing */
 #endif
 
 #endif /* GCC_ATTRIBUTES */

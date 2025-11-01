@@ -32,30 +32,28 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <float.h>
-#include <stdint.h>
 #include "common.h"
 #include "hv.h"
 #define HV_DIMENSION 4
 #include "hv_priv.h"
 
-#define STOP_DIMENSION 3 /* default: stop on dimension 4 */
+#define STOP_DIMENSION 3 // default: stop on dimension 4.
 
 typedef struct fpli_dlnode {
-    const double *x;              /* The data vector              */
-    struct fpli_dlnode **next;         /* Next-node vector             */
-    struct fpli_dlnode **prev;         /* Previous-node vector         */
-    double *area;                 /* Area */
-    double *vol;                  /* Volume */
-    dimension_t ignore;           /* Restricts dim to be 255.  */
+    const double * restrict x;         // point vector
+    struct fpli_dlnode ** next;        // next-node vector
+    struct fpli_dlnode ** prev;        // previous-node vector
+    double * restrict area;            // partial area
+    double * restrict vol;             // partial volume
+    dimension_t ignore;                // [0, 255]
 } fpli_dlnode_t;
 
 
-static int compare_node(const void *p1, const void* p2)
+static int compare_node(const void * restrict p1, const void * restrict p2)
 {
-    const double x1 = *((*(const fpli_dlnode_t **)p1)->x);
-    const double x2 = *((*(const fpli_dlnode_t **)p2)->x);
-
-    return (x1 < x2) ? -1 : (x1 > x2) ? 1 : 0;
+    const double * restrict x1 = (*(const fpli_dlnode_t **)p1)->x;
+    const double * restrict x2 = (*(const fpli_dlnode_t **)p2)->x;
+    return cmp_double_asc(*x1, *x2);
 }
 
 /*
@@ -69,10 +67,11 @@ fpli_setup_cdllist(const double * restrict data, dimension_t d,
     ASSUME(d > STOP_DIMENSION);
     dimension_t d_stop = d - STOP_DIMENSION;
     size_t n = *size;
-    fpli_dlnode_t *head = malloc ((n+1) * sizeof(*head));
-    head->next = malloc(2 * d_stop * (n+1) * sizeof(fpli_dlnode_t*));
+    fpli_dlnode_t * head = malloc((n+1) * sizeof(*head));
+    // Allocate single blocks of memory as much as possible.
+    head->next = malloc(2 * d_stop * (n+1) * sizeof(head));
     head->prev = head->next + d_stop * (n+1);
-    head->area = malloc(2 * d_stop * (n+1) * sizeof(double));
+    head->area = malloc(2 * d_stop * (n+1) * sizeof(*data));
     head->vol = head->area + d_stop * (n+1);
     head->x = NULL; /* head contains no data */
     head->ignore = 0;  /* should never get used */
@@ -96,7 +95,7 @@ fpli_setup_cdllist(const double * restrict data, dimension_t d,
     if (unlikely(n == 0))
         goto finish;
 
-    fpli_dlnode_t **scratch = malloc(n * sizeof(fpli_dlnode_t*));
+    fpli_dlnode_t **scratch = malloc(n * sizeof(*scratch));
     for (i = 0; i < n; i++)
         scratch[i] = head + i + 1;
 
@@ -106,7 +105,7 @@ fpli_setup_cdllist(const double * restrict data, dimension_t d,
         int j = k - STOP_DIMENSION;
         if (j < 0)
             continue;
-        qsort(scratch, n, sizeof(fpli_dlnode_t*), compare_node);
+        qsort(scratch, n, sizeof(*scratch), compare_node);
         head->next[j] = scratch[0];
         scratch[0]->prev[j] = head;
         for (i = 1; i < n; i++) {
@@ -135,30 +134,39 @@ static void fpli_free_cdllist(fpli_dlnode_t * head)
     free(head);
 }
 
+static inline void
+update_bound(double * restrict bound, const double * restrict x, dimension_t dim)
+{
+    ASSUME(dim > STOP_DIMENSION);
+    const double * restrict y = x + STOP_DIMENSION;
+
+    PRAGMA_ASSUME_NO_VECTOR_DEPENDENCY // We need this to avoid a wasteful alias check.
+    for (dimension_t d = 0; d < dim - STOP_DIMENSION; d++) {
+        if (bound[d] > y[d])
+            bound[d] = y[d];
+    }
+}
+
 static void
 delete(fpli_dlnode_t * restrict nodep, dimension_t dim, double * restrict bound)
 {
     ASSUME(dim > STOP_DIMENSION);
-    for (dimension_t i = STOP_DIMENSION; i < dim; i++) {
-        dimension_t d = i - STOP_DIMENSION;
+    for (dimension_t d = 0; d < dim - STOP_DIMENSION; d++) {
         nodep->prev[d]->next[d] = nodep->next[d];
         nodep->next[d]->prev[d] = nodep->prev[d];
-        if (bound[d] > nodep->x[i])
-            bound[d] = nodep->x[i];
     }
+    update_bound(bound, nodep->x, dim);
 }
 
 static void
 reinsert(fpli_dlnode_t * restrict nodep, dimension_t dim, double * restrict bound)
 {
     ASSUME(dim > STOP_DIMENSION);
-    for (dimension_t i = STOP_DIMENSION; i < dim; i++) {
-        dimension_t d = i - STOP_DIMENSION;
+    for (dimension_t d = 0; d < dim - STOP_DIMENSION; d++) {
         nodep->prev[d]->next[d] = nodep;
         nodep->next[d]->prev[d] = nodep;
-        if (bound[d] > nodep->x[i])
-            bound[d] = nodep->x[i];
     }
+    update_bound(bound, nodep->x, dim);
 }
 
 static void
@@ -183,7 +191,7 @@ fpli_hv4d_setup_cdllist(const fpli_dlnode_t * restrict pp,
             p->cnext[0] = NULL;
             p->cnext[1] = NULL;);
         // FIXME: Can we use pp->ignore to initialize p->ndomr?
-        p->ndomr = 0;
+        //p->ndomr = 0;
         // Link the list in order.
         q->next[d] = p;
         p->prev[d] = q;
@@ -209,12 +217,27 @@ one_point_hv(const double * restrict x, const double * restrict ref, dimension_t
 double hv4dplusU(dlnode_t * list);
 
 static double
-fpli_hv4d(fpli_dlnode_t *list, dlnode_t * restrict list4d, size_t c)
+fpli_hv4d(fpli_dlnode_t * restrict list, dlnode_t * restrict list4d, size_t c)
 {
     ASSUME(c > 1);
     fpli_hv4d_setup_cdllist(list->next[0], list4d, c);
     double hv = hv4dplusU(list4d);
     return hv;
+}
+
+static inline void
+update_area(double * restrict area, const double * restrict x,
+            const double * restrict ref, dimension_t dim)
+{
+    ASSUME(dim > STOP_DIMENSION);
+    area[0] = one_point_hv(x, ref, STOP_DIMENSION);
+    const double * restrict ref_d = ref + STOP_DIMENSION;
+    const double * restrict x_d = x + STOP_DIMENSION;
+    // Split into two loops to help the vectorizer.
+    for (dimension_t d = 0; d < dim - STOP_DIMENSION; d++)
+        area[d + 1] = (ref_d[d] - x_d[d]);
+    for (dimension_t d = 0; d < dim - STOP_DIMENSION; d++)
+        area[d + 1] *= area[d];
 }
 
 static double
@@ -254,9 +277,7 @@ hv_recursive(fpli_dlnode_t * restrict list, dlnode_t * restrict list4d,
             * (p1->x[dim] - p1->prev[d_stop]->x[dim]);
     } else {
         ASSUME(c == 1);
-        p1->area[0] = one_point_hv(p1->x, ref, STOP_DIMENSION);
-        for (dimension_t i = STOP_DIMENSION; i < dim; i++)
-            p1->area[i + 1 - STOP_DIMENSION] = p1->area[i - STOP_DIMENSION] * (ref[i] - p1->x[i]);
+        update_area(p1->area, p1->x, ref, dim);
         p1->vol[d_stop] = 0;
         if (p0->x == NULL) {
             return p1->area[d_stop] * (ref[dim] - p1->x[dim]);
@@ -282,7 +303,7 @@ hv_recursive(fpli_dlnode_t * restrict list, dlnode_t * restrict list4d,
                   --------------------------------------*/
                 hypera = fpli_hv4d(list, list4d, c);
             } else {
-                hypera = hv_recursive(list, list4d, dim-1, c, ref, bound);
+                hypera = hv_recursive(list, list4d, dim - 1, c, ref, bound);
             }
             if (hypera <= p1->prev[d_stop]->area[d_stop])
                 p1->ignore = dim;
@@ -325,7 +346,7 @@ hv2d(const double * restrict data, size_t n, const double * restrict ref)
     return hyperv;
 }
 
-double hv3d_plus(const double * restrict data, size_t n, const double * restrict ref);
+double hv3d(const double * restrict data, size_t n, const double * restrict ref);
 double hv4d(const double * restrict data, size_t n, const double * restrict ref);
 
 /*
@@ -340,7 +361,7 @@ double fpli_hv(const double * restrict data, int d, int npoints,
     ASSUME(d < 256);
     ASSUME(d > 1);
     if (d == 4) return hv4d(data, n, ref);
-    if (d == 3) return hv3d_plus(data, n, ref);
+    if (d == 3) return hv3d(data, n, ref);
     if (d == 2) return hv2d(data, n, ref);
     dimension_t dim = (dimension_t) d;
     fpli_dlnode_t * list = fpli_setup_cdllist(data, dim, &n, ref);
@@ -353,7 +374,7 @@ double fpli_hv(const double * restrict data, int d, int npoints,
     } else {
         const dimension_t d_stop = dim - STOP_DIMENSION;
         ASSUME(d_stop > 1 && d_stop < 255); // Silence -Walloc-size-larger-than= warning
-        double * bound = malloc(d_stop * sizeof(double));
+        double * bound = malloc(d_stop * sizeof(*bound));
         for (dimension_t i = 0; i < d_stop; i++)
             bound[i] = -DBL_MAX;
         dlnode_t * list4d = new_cdllist(n, ref);

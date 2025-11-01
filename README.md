@@ -7,8 +7,8 @@
 [![CRAN Downloads](https://cranlogs.r-pkg.org/badges/grand-total/moocore)][r-moocore-cran]
 [![R build status][r-build-badge]][r-build-link]
 [![coverage][r-coverage-badge]][r-coverage-link]
-[![r-universe version](https://multi-objective.r-universe.dev/badges/moocore)](https://multi-objective.r-universe.dev/moocore)
-[![r-universe build status](https://github.com/r-universe/multi-objective/actions/workflows/build.yml/badge.svg)](https://github.com/r-universe/multi-objective/actions/workflows/build.yml)
+[![r-universe version][r-universe-version-badge]][r-universe-version]
+[![r-universe build status][r-universe-build-badge]][r-universe-build-link]
 <!-- badges: end -->
 
 [ [**Homepage**][r-moocore-homepage] ]
@@ -30,9 +30,10 @@ Introduction
 This webpage documents the `moocore` R package. There is also a [`moocore` Python package](https://multi-objective.github.io/moocore/python/)
 
 
-The goal of the [**moocore** project](https://github.com/multi-objective/moocore/) is to collect fast implementations of core mathematical functions and algorithms for multi-objective optimization and make them available to different programming languages via similar interfaces. These functions include:
+The goal of the [**moocore** project](https://github.com/multi-objective/moocore/) is to collect and document fast implementations of core mathematical functions and algorithms for multi-objective optimization and make them available to different programming languages via similar interfaces. These functions include:
 
- * Identifying and filtering dominated vectors.
+ * Generate and transform nondominated sets.
+ * Identify and filter dominated vectors.
  * Quality metrics such as (weighted) hypervolume, epsilon, IGD, etc.
  * Computation of the Empirical Attainment Function. The empirical attainment function (EAF) describes the probabilistic
 distribution of the outcomes obtained by a stochastic algorithm in the
@@ -143,3 +144,7 @@ this work so I can mention them to my funding agent and tenure committee.
 [r-moocore-cran]: https://cran.r-project.org/package=moocore
 [r-moocore-github]: https://github.com/multi-objective/moocore/tree/main/r#readme
 [r-moocore-homepage]: https://multi-objective.github.io/moocore/r/
+[r-universe-build-badge]: https://github.com/r-universe/multi-objective/actions/workflows/build.yml/badge.svg
+[r-universe-build-link]: https://github.com/r-universe/multi-objective/actions/workflows/build.yml
+[r-universe-version]: https://multi-objective.r-universe.dev/moocore
+[r-universe-version-badge]: https://multi-objective.r-universe.dev/badges/moocore

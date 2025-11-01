@@ -24,6 +24,8 @@
     "     --maximise      all objectives must be maximised;\n"
 #define OPTION_NOCHECK_STR \
     "     --no-check      do not check nondominance of sets (faster but unsafe);\n"
+#define OPTION_SEED_STR \
+    " -S, --seed=SEED     Seed of the random number generator (positive integer).\n"
 
 #include <stdbool.h>
 #include <ctype.h> // for isspace()
@@ -32,12 +34,17 @@ extern char *program_invocation_short_name;
 
 static void version(void)
 {
+#if defined(DEBUG) && DEBUG >= 1
+#define DEBUG_LEVEL_STR " [DEBUG=" MOOCORE_STRINGIFY_MACRO(DEBUG) "]"
+#else
+#define DEBUG_LEVEL_STR ""
+#endif
 #ifdef MARCH
 #define OPTIMISED_FOR_STR " (optimised for "MARCH")"
 #else
 #define OPTIMISED_FOR_STR ""
 #endif
-    printf("%s version " VERSION OPTIMISED_FOR_STR
+    printf("%s version " VERSION OPTIMISED_FOR_STR DEBUG_LEVEL_STR
            "\n\n", program_invocation_short_name);
     printf(
 "Copyright (C) " CMDLINE_COPYRIGHT_YEARS "\n" CMDLINE_AUTHORS "\n"
@@ -266,5 +273,8 @@ static inline void default_cmdline_handler(int opt)
           unreachable();
     }
 }
+
+_attr_const_func
+static inline const char * bool2str(bool b) { return b ? "TRUE" : "FALSE"; }
 
 #endif // !CMDLINE_H

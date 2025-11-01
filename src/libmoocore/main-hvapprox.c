@@ -28,8 +28,9 @@
 #include <limits.h> // LONG_MAX
 #include <inttypes.h> // PRIu32
 
-#include "hvapprox.h"
 #include "timer.h"
+#include "nondominated.h"
+#include "hvapprox.h"
 #define CMDLINE_COPYRIGHT_YEARS "2025"
 #define CMDLINE_AUTHORS "Manuel Lopez-Ibanez <manuel.lopez-ibanez@manchester.ac.uk>\n"
 #include "cmdline.h"
@@ -47,7 +48,7 @@ static void usage(void)
 
     printf(
 "Approximate the hypervolume value of each input set of each FILE. \n"
-"The approximation uses Monte-Carlo sampling, thus gets more accurate with larger\n"
+"The approximation uses (quasi-)Monte-Carlo sampling, thus gets more accurate with larger\n"
 "values of --nsamples. With no FILE, or when FILE is -, read standard input.\n\n"
 
 "Options:\n"
@@ -66,7 +67,7 @@ OPTION_VERSION_STR
 " -n, --nsamples=N    Number of Monte-Carlo samples (N is a positive integer).\n"
 " -m, --method=M      1: Monte-Carlo sampling using normal distribution;    \n"
 "                     2: Hua-Wang deterministic sampling (default).         \n"
-" -S, --seed=S        Seed of the random number generator (S: positive integer).\n"
+OPTION_SEED_STR
 "                     Only method=1.                                        \n"
 "\n");
 }

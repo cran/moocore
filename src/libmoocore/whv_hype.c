@@ -207,11 +207,10 @@ static void
 normalise01_inplace(double *points, int dim, int npoints,
                     const double *lbound, const double *ubound)
 {
-    signed char * minmax = malloc(sizeof(signed char) * dim);
-    memset(minmax, -1, sizeof(signed char) * dim);
+    const signed char * minmax = minmax_minimise((dimension_t) dim);
     normalise(points, dim, npoints, minmax, /*agree=*/-1, 0.0, 1.0,
               lbound, ubound);
-    free(minmax);
+    free((void *) minmax);
 }
 
 static double *

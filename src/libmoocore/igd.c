@@ -49,8 +49,8 @@
 #include <unistd.h>  // for getopt()
 #include <getopt.h> // for getopt_long()
 
-#include "igd.h"
 #include "nondominated.h"
+#include "igd.h"
 
 #define CMDLINE_COPYRIGHT_YEARS "2016-2024"
 #define CMDLINE_AUTHORS "Manuel Lopez-Ibanez  <manuel.lopez-ibanez@manchester.ac.uk>\n" \
@@ -76,7 +76,7 @@ static void usage(void)
            program_invocation_short_name, program_invocation_short_name);
 
     printf(
-"Calculates the inverted generational distance (IGD) measure for the Pareto sets given as input\n\n"
+"Calculates quality metrics related to the generational distance (GD, IGD, IGD+, avg Hausdorff distance).\n\n"
 
 "Options:\n"
 OPTION_HELP_STR
@@ -133,7 +133,7 @@ do_file (const char *filename, double *reference, size_t reference_size,
     /* Default minmax if not set yet.  */
     bool free_minmax = false;
     if (minmax == NULL) {
-        minmax = maximise_all_flag ? minmax_maximise(nobj) : minmax_minimise(nobj);
+        minmax = maximise_all_flag ? minmax_maximise((dimension_t) nobj) : minmax_minimise((dimension_t) nobj);
         free_minmax = true;
     }
 
@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
     if (minmax == NULL) {
-        minmax = maximise_all_flag ? minmax_maximise(nobj) : minmax_minimise(nobj);
+        minmax = maximise_all_flag ? minmax_maximise((dimension_t) nobj) : minmax_minimise((dimension_t) nobj);
     }
     reference_size = filter_dominated_set(reference, nobj, reference_size, minmax);
 
