@@ -45,9 +45,9 @@ This uses the option `"-march=native"`. If your GCC version does not support `"n
 
     make all MARCH=x86-64-v2
 
-See the [GCC manual](https://gcc.gnu.org/onlinedocs/gcc/Submodel-Options.html** for the names of the architectures supported by your version of GCC.
+See the [GCC manual](https://gcc.gnu.org/onlinedocs/gcc/Submodel-Options.html) for the names of the architectures supported by your version of GCC.
 
-You can compile the code with various runtime checks enabled using the option `DEBUG=1`.  This will slow down the code significantly.
+You can compile the code with various runtime checks enabled using the option `DEBUG=1`.  This will slow down the code significantly.  If this is too slow for your purposes, you can disable the [sanitizers](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html#index-fsanitize_003daddress) using `make all DEBUG=1 SANITIZERS=""`.
 
 The build system will try to pick good compiler flags for you, but if you need to, you can override them by passing the option `OPT_CFLAGS`. For example, to disable compiler optimization and enabled debug symbols, you could run:
 
@@ -55,7 +55,7 @@ The build system will try to pick good compiler flags for you, but if you need t
 
 
 If you do not want to see the command line of each compiler
-invocation, pass `S=1` to `make`.
+invocation, you pass `S=1` to `make`.
 
 
 Embedding (shared library)
@@ -66,6 +66,38 @@ Most functions are implemented in headers such as `nondominated.h`. For other fu
     make shlibs
 
 Functions exported by the library are marked with `MOOCORE_API`.
+
+
+Testsuite
+=========
+
+The **moocore** executables are validated using a [comprehensive testsuite](https://github.com/multi-objective/testsuite). Running the testsuite requires [Python](https://www.python.org/downloads/) `>= 3.10` and additional Python packages (see [`testsuite/requirements.txt`](https://github.com/multi-objective/testsuite/blob/main/requirements.txt)).  To run the testsuite yourself, follow these steps:
+
+```bash
+# Download moocore
+git clone https://github.com/multi-objective/moocore moocore
+# Download the testsuite
+git clone https://github.com/multi-objective/testsuite moocore/testsuite
+# Install required python packages
+python3 -m pip install -r testsuite/requirements.txt
+# Testing
+make -C moocore/c/ test
+# Timing
+make -C moocore/c/ time
+```
+
+Under `moocore/c/`, `make test` will compile the code with `DEBUG=1 SANTIZERS="" OPT_CFLAGS="-Og -g3"`. This is useful for debugging failures.
+
+`make time` will compile the code with `DEBUG=0 SANITIZERS="" OPT_CLAGS="-O3 -ftlo -march=native"`. This is useful for benchmarking code and making sure compiler optimizations do not break anything.
+
+Neither `make test` nor `make time` recompile the code that has not been modified. So you can compile the code first with your preferred compiler flags and then run the testsuite. For example, if you compile with `make all DEBUG=1`, the code will be compiler with several [sanitizers](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html#index-fsanitize_003daddress) enabled. You can then call `make test` to run the testsuite with the sanitizers enabled.  This is much slower, but very helpful to track crashes.
+
+Under `c/` there are various targets to run only parts of the testsuite, for example:
+
+    make test-hv
+    make test-nondominated
+    ...
+
 
 
 Command-line executables
@@ -304,25 +336,6 @@ Options:
                      or maximised (+). By default all are minimised;
 ```
 
-Testsuite
-=========
-
-The **moocore** executables are validated using a [comprehensive testsuite](https://github.com/multi-objective/testsuite). Running the testsuite requires [Python](https://www.python.org/downloads/) `>= 3.10` and additional Python packages (see [`testsuite/requirements.txt`](https://github.com/multi-objective/testsuite/blob/main/requirements.txt)).  To run the testsuite yourself, follow these steps:
-
-```bash
-# Download moocore
-git clone https://github.com/multi-objective/moocore moocore
-# Download the testsuite
-git clone https://github.com/multi-objective/testsuite moocore/testsuite
-# Testing
-make -C moocore/c/ test
-# Timing
-make -C moocore/c/ time
-```
-
-
-
-
 License
 ========
 
@@ -348,5 +361,5 @@ See the [LICENSE](/LICENSE) and [COPYRIGHTS](/r/inst/COPYRIGHTS) files.
 [r-moocore-cran]: https://cran.r-project.org/package=moocore
 [r-moocore-github]: https://github.com/multi-objective/moocore/tree/main/r#readme
 [r-moocore-homepage]: https://multi-objective.github.io/moocore/r/
-[testsuite-badge]: https://github.com/multi-objective/testsuite/actions/workflows/moocore.yml/badge.svg?event=push
+[testsuite-badge]: https://github.com/multi-objective/testsuite/actions/workflows/moocore.yml/badge.svg
 [testsuite-link]: https://github.com/multi-objective/testsuite/actions/workflows/moocore.yml

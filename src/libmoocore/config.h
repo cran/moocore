@@ -14,4 +14,10 @@
 # define _CRT_SECURE_NO_WARNINGS 1
 #endif
 
+#if DEBUG == 0 && !defined(NDEBUG)
+# define NDEBUG // Disable assert()
+#elif DEBUG > 0 && defined(NDEBUG)
+# undef NDEBUG // Enable assert()
+#endif
+
 #endif // _MOOCORE_CONFIG_H_
