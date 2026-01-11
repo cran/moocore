@@ -20,4 +20,9 @@
 # undef NDEBUG // Enable assert()
 #endif
 
+#include <stdint.h>
+typedef uint_fast8_t dimension_t;
+// Maximum number of objectives is 31. It cannot be larger than 255.
+#define MOOCORE_DIMENSION_MAX 31
+
 #endif // _MOOCORE_CONFIG_H_

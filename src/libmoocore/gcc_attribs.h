@@ -120,15 +120,15 @@
 #endif
 
 
-#if (defined(__GNUC__) && __GNUC__ >= 3) || defined(__clang__)
-# define likely(x)	__builtin_expect(!!(x), 1)
-# define unlikely(x)	__builtin_expect(!!(x), 0)
+#if defined(__GNUC__) || defined(__clang__)
+# define likely(x)	  __builtin_expect(!!(x), 1)
+# define unlikely(x)  __builtin_expect(!!(x), 0)
 #elif (defined(__cplusplus) && __cplusplus >= 202002L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L)
-# define likely(x)	(x) [[likely]]
-# define unlikely(x)	(x) [[unlikely]]
+# define likely(x)	  (x) [[likely]]
+# define unlikely(x)  (x) [[unlikely]]
 #else
-# define likely(x)	(x)
-# define unlikely(x)	(x)
+# define likely(x)	  (x)
+# define unlikely(x)  (x)
 #endif
 
 #ifdef _MSC_VER
@@ -213,7 +213,7 @@
 
 #ifdef __ICC
 #define PRAGMA_ASSUME_NO_VECTOR_DEPENDENCY PRAGMA(ivdep)
-#elif defined(__GNUC__)  && __GNUC__ >= 5
+#elif defined(__GNUC__) && !defined(__clang__)
 #define PRAGMA_ASSUME_NO_VECTOR_DEPENDENCY PRAGMA(GCC ivdep)
 #else
 #define PRAGMA_ASSUME_NO_VECTOR_DEPENDENCY
@@ -223,8 +223,17 @@
 #if defined(__GNUC__)  && __GNUC__ >= 13 && defined(__OPTIMIZE__)
 #define _attr_optimize_finite_math                                             \
     __attribute__((optimize("no-signed-zeros", "finite-math-only")))
+#define _attr_optimize_finite_and_associative_math                             \
+    __attribute__((optimize("no-signed-zeros", "finite-math-only", "no-trapping-math", "associative-math")))
 #else
-#define _attr_optimize_finite_math /* nothing */
+#define _attr_optimize_finite_math                 /* nothing */
+#define _attr_optimize_finite_and_associative_math /* nothing */
+#endif
+
+#ifdef __SANITIZE_ADDRESS__
+# include <sanitizer/asan_interface.h>
+#else
+# define ASAN_POISON_MEMORY_REGION(addr, size) ((void) (addr), (void) (size))
 #endif
 
 #endif /* GCC_ATTRIBUTES */

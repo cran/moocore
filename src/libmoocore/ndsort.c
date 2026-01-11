@@ -111,17 +111,7 @@ calculate_uev (bool *uev, const double *points, int dim, int size,
 
 int main(int argc, char *argv[])
 {
-    int nsets = 0;
-    int *cumsizes = NULL;
-    double *points = NULL;
-    int dim = 0;
-    const char *filename;
-    const signed char *minmax = NULL;
-    bool only_rank_flag = false;
-//    bool hypervolume_flag = false;
-//    bool keep_uevs_flag = false;
-
-    /* see the man page for getopt_long for an explanation of these fields */
+    // See the man page for getopt_long for an explanation of these fields.
     static const char short_options[] = "hVvqkro:";
     static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
@@ -132,10 +122,16 @@ int main(int argc, char *argv[])
         {"keep-uevs",  no_argument,       NULL, 'k'},
         {"rank",       no_argument,       NULL, 'r'},
         {"obj",        required_argument, NULL, 'o'},
-
         {NULL, 0, NULL, 0} /* marks end of list */
     };
     set_program_invocation_short_name(argv[0]);
+
+    int dim = 0;
+    const char * filename;
+    const int * minmax = NULL;
+    bool only_rank_flag = false;
+//    bool hypervolume_flag = false;
+//    bool keep_uevs_flag = false;
 
     int opt; /* it's actually going to hold a char */
     int longopt_index;
@@ -180,17 +176,16 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    /* FIXME: Instead of this strange call, create a wrapper read_data_robust. */
-    handle_read_data_error(
-        read_double_data (filename, &points, &dim, &cumsizes, &nsets),
-        filename);
-    if (!filename)
+    double * points = NULL;
+    int * cumsizes = NULL;
+    int nsets = 0;
+    robust_read_double_data(filename, &points, &dim, &cumsizes, &nsets, /* union_flag=*/true);
+    if (filename == NULL)
         filename = stdin_name;
+    const int size = cumsizes[0];
+    free(cumsizes);
 
-    const int size = cumsizes[0] = cumsizes[nsets - 1];
-    nsets = 1;
-
-    /* Default minmax if not set yet.  */
+    // Default minmax if not set yet.
     if (minmax == NULL)
         minmax = minmax_minimise((dimension_t) dim);
 
@@ -199,17 +194,17 @@ int main(int argc, char *argv[])
         printf ("# points: %d\n", size);
     }
 
-    int * rank = pareto_rank(points, size, dim);
+    int * rank = pareto_rank(points, size, (dimension_t) dim);
 
     if (only_rank_flag) {
-        fprint_rank (stdout, rank, size);
+        fprint_rank(stdout, rank, size);
 
     } else {
         bool *uev = NULL;
         static const double upper_range = 0.9;
         static const double lower_range = 0.0;
 
-        double * order = malloc (sizeof(double) * size);
+        double * order = malloc (sizeof(*order) * size);
         int max_rank = 0;
         for (int k = 0; k < size; k++) {
             if (rank[k] > max_rank) max_rank = rank[k];
@@ -242,14 +237,13 @@ int main(int argc, char *argv[])
                 }
             }
 
-            uev = calculate_uev (uev, data, dim, data_size, lbound, ubound);
+            uev = calculate_uev(uev, data, dim, data_size, lbound, ubound);
 
-            normalise (data, dim, data_size, minmax, AGREE_NONE,
-                       lower_range, upper_range,
-                       lbound, ubound);
+            normalise(data, data_size, (dimension_t)dim, minmax, AGREE_NONE,
+                      lower_range, upper_range, lbound, ubound);
 
-            double *hvc = malloc(sizeof(double) * data_size);
-            hv_contributions(hvc, data, dim, data_size, ref, /*ignore_dominated=*/true);
+            double * hvc = malloc(sizeof(*hvc) * data_size);
+            hv_contributions(hvc, data, data_size, (dimension_t) dim, ref, /*ignore_dominated=*/true);
             /* FIXME: handle uevs: keep_uevs_flag ? uev : NULL);*/
             for (int k = 0, j = 0; k < size; k++) {
                 if (rank[k] != i) continue;
@@ -265,9 +259,8 @@ int main(int argc, char *argv[])
         free (order);
     }
 
-    free (rank);
-    free (cumsizes);
-    free (points);
-    free ((void *) minmax);
+    free(rank);
+    free(points);
+    free((void *) minmax);
     return 0;
 }

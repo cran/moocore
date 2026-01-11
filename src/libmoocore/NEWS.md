@@ -1,5 +1,18 @@
 # moocore C library
 
+## 0.18
+
+ * `pareto_rank()` is now O(k * n log n) in 3D, which is faster than the naive O(n^3).
+ * HV3D+ is slightly faster with repeated coordinates (#41).
+ * Switch argument order of `fpli_hv()`, `hv_contributions()`, `IGD()`,
+   `IGD_plus()`, `avg_Hausdorff_dist()`, `epsilon_additive()`, `epsilon_mult()`,
+   `find_weakly_dominated_point()`, `is_nondominated()`, `pareto_rank()`,
+   `agree_normalise()`, `hv_approx_hua_wang()`, `hv_approx_normal()`
+   to pass first the number of rows then the number of columns.
+ * Reorganize igd.h so that helper functions are inlined and more loops are vectorized.
+ * Change the type of `minmax` from `signed char *` to `int *` to help vectorization.
+ * Fix bug in `epsilon_mult()` with mixed min-max objectives.
+
 ## 0.17.0
 
  * `hv_contributions()` gains a parameter `ignore_dominated`.  The 3D case uses the HVC3D algorithm implemented in `hvc3d()`.

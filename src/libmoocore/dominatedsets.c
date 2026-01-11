@@ -180,7 +180,7 @@ print_results (char **filenames, int numfiles, int *nruns, int **results)
 }
 
 static inline int
-dominance (int dim, const double *a, const double *b, const signed char *minmax)
+dominance(int dim, const double * restrict a, const double * restrict b, const int * restrict minmax)
 /***********************************************
  return: O  -> if a == b
          1  -> if a dominates b
@@ -205,7 +205,7 @@ dominance (int dim, const double *a, const double *b, const signed char *minmax)
     return 0;
 }
 
-static int set_dominates (int dim, const signed char *minmax,
+static int set_dominates (int dim, const int * restrict minmax,
                           const double *points_x, int size_x,
                           const double *points_y, int size_y)
 {
@@ -248,7 +248,7 @@ static int set_dominates (int dim, const signed char *minmax,
 }
 
 int
-pareto_better (int dim, const signed char *minmax,
+pareto_better (int dim, const int * restrict minmax,
                const double *points_a, int size_a,
                const double *points_b, int size_b)
 {
@@ -263,7 +263,7 @@ pareto_better (int dim, const signed char *minmax,
         }
     }
 
-    int result2 = epsilon_additive_ind ((dimension_t) dim, minmax, points_a, size_a, points_b, size_b);
+    int result2 = epsilon_additive_ind(minmax, (dimension_t) dim, points_a, size_a, points_b, size_b);
 
     DEBUG2 (
         printf ("result = %d, result2 = %d\n", result, result2);
@@ -282,7 +282,7 @@ pareto_better (int dim, const signed char *minmax,
 }
 
 void
-cmpparetos (int dim, const signed char *minmax,
+cmpparetos (int dim, const int * restrict minmax,
             const double * points_a, int nruns_a,
             const int *cumsizes_a, int *numbetter_a,
             const double * points_b, int nruns_b,
@@ -312,16 +312,7 @@ cmpparetos (int dim, const signed char *minmax,
 
 int main(int argc, char *argv[])
 {
-    int *nruns = NULL;
-    int **cumsizes = NULL;
-    double **points = NULL;
-    int dim = 0;
-    char **filenames;
-    int numfiles;
-    const signed char *minmax = NULL;
-
-    int k, n, j;
-    /* see the man page for getopt_long for an explanation of these fields */
+    // See the man page for getopt_long for an explanation of these fields.
     static const char short_options[] = "hVvqpo:";
     static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
@@ -334,6 +325,10 @@ int main(int argc, char *argv[])
         {NULL, 0, NULL, 0} /* marks end of list */
     };
     set_program_invocation_short_name(argv[0]);
+
+    int dim = 0;
+    const int * restrict minmax = NULL;
+    int k, n, j;
 
     int opt; /* it's actually going to hold a char */
     int longopt_index;
@@ -365,7 +360,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    numfiles = argc - optind;
+    int numfiles = argc - optind;
 
     if (numfiles <= 1) {
         fprintf(stderr, "%s: error: at least two input files are required.\n",
@@ -374,26 +369,26 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    filenames = malloc (sizeof(char *) * numfiles);
-    points = malloc (sizeof(double *) * numfiles);
-    nruns = malloc (sizeof(int) * numfiles);
-    cumsizes = malloc (sizeof(int *) * numfiles);
+    char ** filenames = malloc(sizeof(*filenames) * numfiles);
+    double ** points = malloc(sizeof(*points) * numfiles);
+    int * nruns = malloc(sizeof(*nruns) * numfiles);
+    int **cumsizes = malloc(sizeof(*cumsizes) * numfiles);
 
     for (k = 0; k < numfiles; optind++, k++) {
         filenames[k] = argv[optind];
         points[k] = NULL;
         cumsizes[k] = NULL;
         nruns[k] = 0;
-        handle_read_data_error(
-            read_double_data (filenames[k], &points[k], &dim, &cumsizes[k], &nruns[k]),
-            filenames[k]);
+        robust_read_double_data(filenames[k], &points[k], &dim,
+                                &cumsizes[k], &nruns[k],
+                                /* union_flag=*/false);
     }
 
-    /* Default minmax if not set yet.  */
+    // Default minmax if not set yet.
     if (minmax == NULL)
         minmax = minmax_minimise((dimension_t) dim);
 
-    /* Print filename substitutions.  */
+    // Print filename substitutions.
     for (k = 0; k < numfiles; k++) {
         char buffer[32];
         snprintf(buffer, 31, "f%d", k + 1);
@@ -417,8 +412,7 @@ int main(int argc, char *argv[])
     /* Print some info.  */
     printf ("# objectives (%d): ", dim);
     for (k = 0; k < dim; k++) {
-        printf ("%c", (minmax[k] < 0) ? '-'
-                : (minmax[k] > 0) ? '+' : 'i');
+        printf ("%c", (minmax[k] < 0) ? '-' : (minmax[k] > 0) ? '+' : 'i');
     }
     printf ("\n");
 
@@ -428,10 +422,11 @@ int main(int argc, char *argv[])
         for (k = 0; k < numfiles; k++) {
             int size = 0;
             for (n = 0; n < nruns[k]; n++) {
+                size_t n_size = (size_t) cumsizes[k][n] - size;
                 size_t failed_pos
-                    = find_dominated_point(&points[k][dim * size], dim,
-                                           cumsizes[k][n] - size, minmax);
-                if (failed_pos < (size_t)(cumsizes[k][n] - size)) {
+                    = find_dominated_point(&points[k][dim * size],
+                                           n_size, (dimension_t) dim, minmax);
+                if (failed_pos < n_size) {
                     fprintf (stderr,
                              "%s: %s: set %d: point %zu is dominated.\n",
                              program_invocation_short_name,

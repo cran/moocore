@@ -27,11 +27,11 @@ enum ERROR_READ_DATA { READ_INPUT_FILE_EMPTY = -1,
 };
 
 int
-read_int_data (const char *filename, int **data_p,
-               int *nobjs_p, int **cumsizes_p, int *nsets_p);
+read_int_data(const char * filename, int ** restrict data_p,
+              int * restrict nobjs_p, int ** restrict cumsizes_p, int * restrict nsets_p);
 int
-read_double_data (const char *filename, double **data_p,
-                  int *nobjs_p, int **cumsizes_p, int *nsets_p);
+read_double_data(const char * filename, double ** restrict data_p,
+                 int * restrict nobjs_p, int ** restrict cumsizes_p, int * restrict nsets_p);
 
 #ifndef R_PACKAGE
 
@@ -39,21 +39,21 @@ void vector_fprintf (FILE *stream, const double * vector, int size);
 void vector_printf (const double *vector, int size);
 void vector_int_fprintf (FILE *stream, const int * vector, int size);
 void vector_int_printf (const int *vector, int size);
-int read_datasets(const char * filename, double **data_p, int *ncols_p, int *datasize_p);
+int read_datasets(const char * filename, double ** restrict data_p, int * restrict ncols_p, int * restrict datasize_p);
 int write_sets (FILE *outfile, const double *data, int ncols,
                 const int *cumsizes, int nruns);
 int write_sets_filtered (FILE *outfile, const double *data, int ncols,
                          const int *cumsizes, int nruns,
                          const bool *write_p);
 
-static inline const signed char *
+static inline const int *
 read_minmax (const char *str, int *nobj_p)
 {
     assert (str != NULL);
     size_t len = strlen(str);
     bool all_ignored = true;
     size_t nobj = (size_t) *nobj_p;
-    signed char * minmax = malloc (sizeof(signed char) * MAX(len, nobj));
+    int * minmax = malloc (sizeof(*minmax) * MAX(len, nobj));
     for (size_t i = 0; i < len; i++) {
         switch (str[i]) {
           case '+':

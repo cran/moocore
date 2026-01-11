@@ -26,12 +26,13 @@ assuming minimization of all objectives.
 }
 \details{
 The hypervolume of a set of multidimensional points \eqn{A \subset
-\mathbb{R}^d}{A in R^m} with respect to a reference point \eqn{\vec{r} \in
-\mathbb{R}^d}{r in R^m} is the volume of the region dominated by the set and
-bounded by the reference point \citep{ZitThi1998ppsn}.  Points in \eqn{A}
-that do not strictly dominate \eqn{\vec{r}} do not contribute to the
-hypervolume value, thus, ideally, the reference point must be strictly
-dominated by all points in the true Pareto front.
+\mathbb{R}^m}{A in R^m}, where \eqn{m} is the dimension of the points, with
+respect to a reference point \eqn{\vec{r} \in \mathbb{R}^m}{r in R^m} is the
+volume of the region dominated by the set and bounded by the reference point
+\citep{ZitThi1998ppsn}.  Points in \eqn{A} that do not strictly dominate
+\eqn{\vec{r}} do not contribute to the hypervolume value, thus, ideally, the
+reference point must be strictly dominated by all points in the true Pareto
+front.
 
 More precisely, the hypervolume is the \href{https://en.wikipedia.org/wiki/Lebesgue_measure}{Lebesgue measure} of the union of
 axis-aligned hyperrectangles
@@ -42,7 +43,7 @@ an \emph{orthogonal polytope}.
 
 The hypervolume is compatible with Pareto-optimality
 \citep{KnoCor2002cec,ZitThiLauFon2003:tec}, that is, \eqn{\nexists A,B
-\subset \mathbb{R}^m}{it does not exist A,B subsets of R^d}, such that
+\subset \mathbb{R}^m}{it does not exist A,B subsets of R^m}, such that
 \eqn{A} is better than \eqn{B} in terms of Pareto-optimality and
 \eqn{\text{hyp}(A) \leq \text{hyp}(B)}{hyp(A) <= hyp(B)}. In other words, if
 a set is better than another in terms of Pareto-optimality, the hypervolume
@@ -50,6 +51,9 @@ of the former must be strictly larger than the hypervolume of the latter.
 Conversely, if the hypervolume of a set is larger than the hypervolume of
 another, then we know for sure than the latter set cannot be better than the
 former in terms of Pareto-optimality.
+
+Like most measures of unions of high-dimensional geometric objects,
+computing the hypervolume is #P-hard \citep{BriFri2010approx}.
 
 For 2D and 3D, the algorithms used
 \citep{FonPaqLop06:hypervolume,BeuFonLopPaqVah09:tec} have \eqn{O(n \log n)}
@@ -64,16 +68,18 @@ which has \eqn{O(n^2)} complexity.  Compared to the \href{https://github.com/apg
 correctly handles weakly dominated points and has been further optimized for
 speed.
 
-For 5D or higher, it uses a recursive algorithm
+For 5D or higher and up to 15 points, the implementation uses the
+inclusion-exclusion algorithm \citep{WuAza2001metrics}, which has \eqn{O(m
+2^{n})} time and \eqn{O(n\cdot m)} space complexity, but it is very fast for
+such small sets.  For larger number of points, it uses a recursive algorithm
 \citep{FonPaqLop06:hypervolume} with \eqn{\text{HV4D}^{+}} as the base case,
-resulting in a \eqn{O(n^{d-2})} time complexity and \eqn{O(n)} space
-complexity in the worst-case, where \eqn{d} is the dimension of the points.
-Experimental results show that the pruning techniques used may reduce the
-time complexity even further.  The original proposal
-\citep{FonPaqLop06:hypervolume} had the HV3D algorithm as the base case,
-giving a time complexity of \eqn{O(n^{d-2} \log n)}.  Andreia P. Guerreiro
-enhanced the numerical stability of the algorithm by avoiding floating-point
-comparisons of partial hypervolumes.
+resulting in a \eqn{O(n^{m-2})} time complexity and \eqn{O(n)} space
+complexity in the worst-case.  Experimental results show that the pruning
+techniques used may reduce the time complexity even further.  The original
+proposal \citep{FonPaqLop06:hypervolume} had the HV3D algorithm as the base
+case, giving a time complexity of \eqn{O(n^{m-2} \log n)}.  Andreia
+P. Guerreiro enhanced the numerical stability of the algorithm by avoiding
+floating-point comparisons of partial hypervolumes.
 }
 \examples{
 

@@ -87,44 +87,28 @@ OPTION_SEED_STR
 
 // FIXME: There is a similar function in main-hv.c
 static void
-hvapprox_file (const char *filename, double *reference,
-               double *maximum, double *minimum, int *nobj_p,
-               uint_fast32_t nsamples, enum approx_method_t hv_approx_method, uint32_t seed)
+hvapprox_file(const char * filename, double * restrict reference,
+              double * restrict maximum, double * restrict minimum,
+              int * restrict nobj_p,
+              uint_fast32_t nsamples, enum approx_method_t hv_approx_method, uint32_t seed)
 {
-    double *data = NULL;
-    int *cumsizes = NULL;
-    int cumsize;
+    double * data = NULL;
+    int * cumsizes = NULL;
     int nruns = 0;
-    int n;
-    int nobj = *nobj_p;
-    char *outfilename = NULL;
-    FILE *outfile = stdout;
-
-    handle_read_data_error(
-        read_double_data (filename, &data, &nobj, &cumsizes, &nruns), filename);
-    if (!filename)
+    robust_read_double_data(filename, &data, nobj_p, &cumsizes, &nruns, union_flag);
+    if (filename == NULL)
         filename = stdin_name;
+    dimension_t nobj = (dimension_t) *nobj_p;
 
-    if (filename != stdin_name && suffix) {
-        outfilename = m_strcat(filename, suffix);
-        outfile = fopen (outfilename, "w");
-        if (outfile == NULL) {
-            errprintf ("%s: %s\n", outfilename, strerror(errno));
-            exit (EXIT_FAILURE);
-        }
-    }
-
-    if (union_flag) {
-        cumsizes[0] = cumsizes[nruns - 1];
-        nruns = 1;
-    }
+    const char * outfilename = NULL;
+    FILE * outfile = fopen_outfile(&outfilename, filename, suffix);
 
     if (verbose_flag >= 2)
         printf("# file: %s\n", filename);
 
     bool needs_minimum = (minimum == NULL);
     if (needs_minimum) {
-        data_bounds (&minimum, &maximum, data, nobj, cumsizes[nruns-1]);
+        data_bounds(&minimum, &maximum, data, cumsizes[nruns-1], nobj);
         if (verbose_flag >= 2) {
             printf ("# minimum:   ");
             vector_printf (minimum, nobj);
@@ -136,7 +120,7 @@ hvapprox_file (const char *filename, double *reference,
     }
 
     if (reference != NULL) {
-        for (n = 0; n < nobj; n++) {
+        for (dimension_t n = 0; n < nobj; n++) {
             if (reference[n] <= maximum[n]) {
                 warnprintf ("%s: some points do not strictly dominate "
                             "the reference point and they will be discarded",
@@ -145,11 +129,11 @@ hvapprox_file (const char *filename, double *reference,
             }
         }
     } else {
-        reference = malloc(nobj * sizeof(double));
-        for (n = 0; n < nobj; n++) {
-            /* default reference point is: */
+        reference = malloc(nobj * sizeof(*reference));
+        for (dimension_t n = 0; n < nobj; n++) {
+            // Default reference point is:
             reference[n] = maximum[n] + 0.1 * (maximum[n] - minimum[n]);
-            /* so that extreme points have some influence. */
+            // so that extreme points have some influence.
         }
     }
 
@@ -160,19 +144,19 @@ hvapprox_file (const char *filename, double *reference,
     }
 
     // Minimise everything by default.
-    const bool * maximise = new_bool_maximise((dimension_t) nobj, false);
-    for (n = 0, cumsize = 0; n < nruns; cumsize = cumsizes[n], n++) {
+    const bool * maximise = new_bool_maximise(nobj, false);
+    for (int n = 0, cumsize = 0; n < nruns; cumsize = cumsizes[n], n++) {
         Timer_start ();
 
         double volume;
         switch (hv_approx_method) {
           case DZ2019_MC:
-              volume = hv_approx_normal(&data[nobj * cumsize], nobj, cumsizes[n] - cumsize, reference, maximise, nsamples, seed);
+              volume = hv_approx_normal(&data[nobj * cumsize], cumsizes[n] - cumsize, nobj, reference, maximise, nsamples, seed);
               break;
           case DZ2019_HW:
-              volume = hv_approx_hua_wang(&data[nobj * cumsize], nobj, cumsizes[n] - cumsize, reference, maximise, nsamples);
+              volume = hv_approx_hua_wang(&data[nobj * cumsize], cumsizes[n] - cumsize, nobj, reference, maximise, nsamples);
               break;
-          default:
+          default:  // LCOV_EXCL_LINE # nocov
               unreachable();
         }
 
@@ -187,25 +171,19 @@ hvapprox_file (const char *filename, double *reference,
             fprintf (outfile, "# Time: %f seconds\n", time_elapsed);
     }
 
-    if (outfilename) {
-        if (verbose_flag)
-            fprintf (stderr, "# %s -> %s\n", filename, outfilename);
-        fclose (outfile);
-        free (outfilename);
-    }
-    free ((void *) maximise);
-    free (data);
-    free (cumsizes);
+    fclose_outfile(outfile, filename, outfilename, verbose_flag);
+    free((void *) maximise);
+    free(data);
+    free(cumsizes);
     if (needs_minimum) {
         free (minimum);
         free (maximum);
     }
-    *nobj_p = nobj;
 }
 
 int main(int argc, char *argv[])
 {
-    /* See the man page for getopt_long for an explanation of these fields.  */
+    // See the man page for getopt_long for an explanation of these fields.
     static const char short_options[] = "hVvqur:s:n:m:S:";
     static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
@@ -223,7 +201,7 @@ int main(int argc, char *argv[])
 
     set_program_invocation_short_name(argv[0]);
 
-    double *reference = NULL;
+    double * reference = NULL;
     int nobj = 0;
     uint32_t seed = 0;
     uint_fast32_t nsamples = 0;
@@ -311,8 +289,8 @@ int main(int argc, char *argv[])
         hvapprox_file (argv[optind], reference, NULL, NULL, &nobj, nsamples, hv_approx_method, seed);
     } else {
         int k;
-        double *maximum = NULL;
-        double *minimum = NULL;
+        double * maximum = NULL;
+        double * minimum = NULL;
         if (reference == NULL) {
             /* Calculate the maximum among all input files to use as
                reference point.  */

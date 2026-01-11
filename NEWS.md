@@ -1,3 +1,14 @@
+# moocore 0.2.0
+
+ * `pareto_rank()` is faster in 3D.
+ * HV3D+ is slightly faster with repeated coordinates (#41).
+ * `igd()`, `igd_plus()`, `avg_hausdorff_dist()` are faster.
+ * Fix wrong values returned by `epsilon_mult()` when mixing minimization and maximization.
+ * Fix documentation of `epsilon_additive()` (@leandrolanzieri)
+ * `hypervolume()` uses the inclusion-exclusion algorithm for small inputs of
+   up to 15 points, which is significantly faster.
+
+
 # moocore 0.1.10
 
  * `mooocore` now requires R >= 4.1.

@@ -20,14 +20,15 @@
 #ifndef HV_H_
 #define HV_H_
 
+#include <stdbool.h>
 #include "libmoocore-config.h"
 
 // C++ needs to know that types and declarations are C, not C++.
 BEGIN_C_DECLS
 
-MOOCORE_API double fpli_hv(const double *data, int d, int n, const double *ref);
-MOOCORE_API double hv_contributions(double *hvc, double *points, int dim, int size,
-                                    const double * ref, bool ignore_dominated);
+MOOCORE_API double fpli_hv(const double * restrict data, size_t n, dimension_t d, const double * restrict ref);
+MOOCORE_API double hv_contributions(double * restrict hvc, double * restrict points,
+                                    size_t n, dimension_t d, const double * restrict ref, bool ignore_dominated);
 END_C_DECLS
 
 #endif // HV_H_

@@ -50,7 +50,7 @@ static bool check_flag = true;
 static bool filter_flag = false;
 static bool normalise_flag = false;
 static bool force_bounds_flag = false;
-static const char *suffix = "_dat";
+static const char * suffix = "_dat";
 
 static void usage(void)
 {
@@ -95,7 +95,7 @@ OPTION_MAXIMISE_STR
 }
 
 static bool
-read_range (char *str, double *lower, double *upper)
+read_range(char *str, double *lower, double *upper)
 {
     char *endp;
 
@@ -116,42 +116,30 @@ read_range (char *str, double *lower, double *upper)
     return true;
 }
 
-static inline bool
-any_less_than (const double *a, const double *b, int nobj)
-{
-    for (int d = 0; d < nobj; d++)
-        if (a[d] < b[d])
-            return true;
-
-    return false;
-}
-
 static void
-logarithm_scale (double *points, int nobj, int size,
-                 const bool *logarithm)
+logarithm_scale(double * restrict points, size_t size, dimension_t nobj,
+                const bool * restrict logarithm)
 {
-    int k, d;
-
-    assert (logarithm);
-
-    for (d = 0; d < nobj; d++) {
+    assert(logarithm);
+    for (dimension_t d = 0; d < nobj; d++) {
         if (!logarithm[d]) continue;
-        for (k = 0; k < size; k++)
+        for (size_t k = 0; k < size; k++)
             points[k * nobj + d] = log10(points[k * nobj + d]);
     }
 }
 
 static bool
-force_bounds (double *points, int nobj, int *cumsizes, int nsets,
-              const double *lbound, const double *ubound)
+force_bounds(double * restrict points,
+             int * restrict cumsizes, dimension_t nobj, int nsets,
+             const double * restrict lbound, const double * restrict ubound)
 {
     int n, n2, k;
     int size = cumsizes[nsets - 1];
-    bool *outbounds = malloc (sizeof(bool) * size);
+    bool * outbounds = malloc(sizeof(bool) * size);
     int outbounds_found = -1;
     for (n = size - 1; n >= 0; n--) {
-        if (any_less_than (&points[n * nobj], lbound, nobj)
-            || any_less_than (ubound, &points[n * nobj], nobj)) {
+        if (any_less_than(&points[n * nobj], lbound, nobj)
+            || any_less_than(ubound, &points[n * nobj], nobj)) {
             outbounds[n] = true;
             outbounds_found = n;
         } else
@@ -165,25 +153,25 @@ force_bounds (double *points, int nobj, int *cumsizes, int nsets,
         return false;
     }
 
-    int *ssizes = malloc (sizeof(int) * nsets);
+    int * ssizes = malloc(sizeof(*ssizes) * nsets);
     ssizes[0] = cumsizes[0];
     for (k = 1; k < nsets; k++)
         ssizes[k] = cumsizes[k] - cumsizes[k-1];
 
-    /* Find the set of the first out-of-bounds point.  */
+    // Find the set of the first out-of-bounds point.
     for (k = 0; outbounds_found >= cumsizes[k]; k++);
 
-    /* Delete it.  */
+    // Delete it.
     ssizes[k]--;
 
-    /* Delete the rest of them.  */
+    // Delete the rest of them.
     for (n = outbounds_found, n2 = outbounds_found + 1; k < nsets; k++) {
         while (n2 < cumsizes[k]) {
             if (outbounds[n2]) {
                 n2++; ssizes[k]--;
             } else {
-                memcpy (&points[n * nobj], &points[n2 * nobj],
-                        sizeof(double) * nobj);
+                memcpy(&points[n * nobj], &points[n2 * nobj],
+                       sizeof(double) * nobj);
                 n++, n2++;
             }
         }
@@ -196,26 +184,28 @@ force_bounds (double *points, int nobj, int *cumsizes, int nsets,
     for (k = 1; k < nsets; k++)
         cumsizes[k] = ssizes[k] + cumsizes[k-1];
 
-    free (ssizes);
-    free (outbounds);
+    free(ssizes);
+    free(outbounds);
     return true;
 }
 
 static bool
-check_dominated(const char * filename, const double *points,
-                 int nobj, const int *cumsizes, int nruns,
-                 const signed char *minmax, const signed char agree,
-                 bool * restrict nondom)
+check_dominated(const char * filename, const double * restrict points,
+                dimension_t nobj, const int * restrict cumsizes, int nruns,
+                const int * restrict minmax, const int agree,
+                bool * restrict nondom)
 {
     bool first_time = true;
     bool dominated_found = false;
+    // We use it for %-*s in fprintf, so it must be an int.
     int filename_len = (int) MAX(strlen(filename), strlen("filename"));
     for (int n = 0, cumsize = 0; n < nruns; cumsize = cumsizes[n], n++) {
         size_t old_size = cumsizes[n] - cumsize;
         size_t new_size = (nondom == NULL)
-            ? find_dominated_point_agree(&points[nobj * cumsize], nobj, old_size, minmax, agree)
-            : find_nondominated_set_agree(&points[nobj * cumsize], nobj,
-                                          old_size, minmax, agree,
+            ? find_dominated_point_agree(&points[nobj * cumsize], old_size,
+                                         nobj, minmax, agree)
+            : find_nondominated_set_agree(&points[nobj * cumsize], old_size,
+                                          nobj, minmax, agree,
                                           &nondom[cumsize]);
 
         if (verbose_flag >= 2) {
@@ -237,8 +227,7 @@ check_dominated(const char * filename, const double *points,
 
         if (new_size < old_size) {
             dominated_found = true;
-        }
-        else if (new_size > old_size) {/* This can't happen.  */
+        } else if (new_size > old_size) { // This can't happen.
             fatal_error ("%s:%d: a bug happened: new_size > old_size!\n",
                          __FILE__, __LINE__);
         }
@@ -247,8 +236,8 @@ check_dominated(const char * filename, const double *points,
 }
 
 static void
-print_file_info (FILE *stream, const char *filename,
-                 int nobj, const signed char *minmax)
+print_file_info(FILE *stream, const char *filename,
+                int nobj, const int * restrict minmax)
 {
     /* Print some info about input files.  */
     fprintf (stream, "# file: %s\n", filename);
@@ -262,8 +251,8 @@ print_file_info (FILE *stream, const char *filename,
 
 static void
 print_output_header (FILE *stream, const char *filename,
-                     int nobj, const signed char *minmax,
-                     signed char agree,
+                     int nobj, const int *minmax,
+                     int agree,
                      double lrange, double urange,
                      const double *lbound, const double *ubound,
                      const bool *logarithm)
@@ -296,7 +285,7 @@ print_output_header (FILE *stream, const char *filename,
 static void
 print_input_info (FILE *stream, const char *filename,
                   int nobj, const int *cumsizes, int nruns,
-                  const signed char *minmax,
+                  const int *minmax,
                   const double *minimum, const double *maximum)
 {
     print_file_info (stream, filename, nobj, minmax);
@@ -313,43 +302,29 @@ print_input_info (FILE *stream, const char *filename,
 }
 
 static bool
-process_file (const char *filename,
-              const signed char *minmax, int *nobj_p, signed char agree,
-              double lrange, double urange,
-              double *lbound, double *ubound,
-              double **minimum_p, double **maximum_p,
-              bool check_minimum, bool check_maximum, bool maximise_all_flag,
-              const bool *logarithm)
+process_file(const char * filename,
+             const int * restrict minmax, int * restrict nobj_p,
+             int agree,
+             double lrange, double urange,
+             double * restrict lbound, double * restrict ubound,
+             double ** minimum_p, double ** maximum_p,
+             bool check_minimum, bool check_maximum, bool maximise_all_flag,
+             const bool * restrict logarithm)
 {
-    bool logarithm_flag = false;
-
-    double *points = NULL;
-    int nobj = *nobj_p;
-    int *cumsizes = NULL;
+    double * points = NULL;
+    int * cumsizes = NULL;
     int nsets = 0;
-
-    handle_read_data_error(
-        read_double_data (filename, &points, &nobj, &cumsizes, &nsets), filename);
-    ASSUME(nobj > 1 && nobj < 128);
-
-    if (!filename)
+    robust_read_double_data(filename, &points, nobj_p, &cumsizes, &nsets, union_flag);
+    if (filename == NULL)
         filename = stdin_name;
+    dimension_t nobj = (dimension_t) *nobj_p;
 
-    if (union_flag) {
-        cumsizes[0] = cumsizes[nsets - 1];
-        nsets = 1;
-    }
+    // Default minmax if not set yet.
+    bool free_minmax = minmax_alloc(&minmax, maximise_all_flag, nobj);
 
-    /* Default minmax if not set yet.  */
-    bool free_minmax = false;
-    if (minmax == NULL) {
-        minmax = maximise_all_flag ? minmax_maximise((dimension_t)nobj) : minmax_minimise((dimension_t)nobj);
-        free_minmax = true;
-    }
-
-    double *minimum = NULL;
-    double *maximum = NULL;
-    data_bounds(&minimum, &maximum, points, nobj, cumsizes[nsets - 1]);
+    double * minimum = NULL;
+    double * maximum = NULL;
+    data_bounds(&minimum, &maximum, points, cumsizes[nsets - 1], nobj);
 
     if (verbose_flag >= 2)
         print_input_info (stderr, filename, nobj, cumsizes, nsets, minmax,
@@ -358,7 +333,7 @@ process_file (const char *filename,
     if (lbound == NULL)
         lbound = minimum;
     else if (check_minimum && !force_bounds_flag
-             && any_less_than (minimum, lbound, nobj)) {
+             && any_less_than(minimum, lbound, nobj)) {
         errprintf ("%s: found vector smaller than lower bound:", filename);
         vector_fprintf (stderr, minimum, nobj);
         fprintf (stderr, "\n");
@@ -368,7 +343,7 @@ process_file (const char *filename,
     if (ubound == NULL)
         ubound = maximum;
     else if (check_maximum && !force_bounds_flag
-             && any_less_than (ubound, maximum, nobj)) {
+             && any_less_than(ubound, maximum, nobj)) {
         errprintf ("%s: found vector larger than upper bound:", filename);
         vector_fprintf (stderr, maximum, nobj);
         fprintf (stderr, "\n");
@@ -376,20 +351,21 @@ process_file (const char *filename,
     }
 
     if (force_bounds_flag) {
-        force_bounds (points, nobj, cumsizes, nsets, lbound, ubound);
+        force_bounds(points, cumsizes, nobj, nsets, lbound, ubound);
     }
 
     double *log_lbound = NULL;
     double *log_ubound = NULL;
+    bool logarithm_flag = false;
 
     if (logarithm) {
         log_lbound = malloc(sizeof(double) * nobj);
         log_ubound = malloc(sizeof(double) * nobj);
 
-        memcpy (log_lbound, lbound, sizeof(double) * nobj);
-        memcpy (log_ubound, ubound, sizeof(double) * nobj);
+        memcpy(log_lbound, lbound, sizeof(double) * nobj);
+        memcpy(log_ubound, ubound, sizeof(double) * nobj);
 
-        for (int d = 0; d < nobj; d++) {
+        for (dimension_t d = 0; d < nobj; d++) {
             if (!logarithm[d]) continue;
             log_lbound[d] = log10(lbound[d]);
             log_ubound[d] = log10(ubound[d]);
@@ -399,16 +375,16 @@ process_file (const char *filename,
         if (logarithm_flag) {
             lbound = log_lbound;
             ubound = log_ubound;
-            logarithm_scale (points, nobj, cumsizes[nsets - 1], logarithm);
+            logarithm_scale(points, cumsizes[nsets - 1], nobj, logarithm);
         }
     }
 
     if (agree)
-        agree_objectives (points, nobj, cumsizes[nsets - 1], minmax, agree);
+        agree_objectives (points, cumsizes[nsets - 1], nobj, minmax, agree);
 
     if (normalise_flag)
-        normalise (points, nobj, cumsizes[nsets - 1], minmax, agree,
-                   lrange, urange, lbound, ubound);
+        normalise(points, cumsizes[nsets - 1], nobj, minmax, agree,
+                  lrange, urange, lbound, ubound);
 
     bool dominated_found = false;
     // With verbose we print the number of nondominated.
@@ -425,18 +401,12 @@ process_file (const char *filename,
     if (filter_flag || agree || normalise_flag || force_bounds_flag
         || logarithm_flag) {
 
-        const char *outfilename = "<stdout>";
-        FILE *outfile = stdout;
-        if (filename != stdin_name) {
-            outfilename = m_strcat(filename, suffix);
-            outfile = fopen (outfilename, "w");
-            if (outfile == NULL)
-                fatal_error("%s: %s\n", outfilename, strerror(errno));
-        }
+        const char * outfilename = "<stdout>";
+        FILE * outfile = fopen_outfile(&outfilename, filename, suffix);
         if (verbose_flag)
-            print_output_header (outfile, filename, nobj, minmax, agree,
-                                 lrange, urange, lbound, ubound,
-                                 logarithm);
+            print_output_header(outfile, filename, nobj, minmax, agree,
+                                lrange, urange, lbound, ubound,
+                                logarithm);
 
         if (filter_flag && dominated_found)
             write_sets_filtered (outfile, points, nobj, cumsizes, nsets, nondom);
@@ -446,22 +416,20 @@ process_file (const char *filename,
         if (verbose_flag)
             fprintf (stderr, "# %s -> %s\n", filename, outfilename);
         if (outfile != stdout) {
-            fclose (outfile);
-            free ( (void *) outfilename);
+            fclose(outfile);
+            free((void *) outfilename);
         }
     }
 
-    free (points);
-    free (cumsizes);
-    if (free_minmax) free( (void *) minmax);
+    free(points);
+    free(cumsizes);
+    if (free_minmax) free((void *) minmax);
     if (nondom) free(nondom);
     if (log_lbound) free(log_lbound);
     if (log_ubound) free(log_ubound);
 
     *minimum_p = minimum;
     *maximum_p = maximum;
-    *nobj_p = nobj;
-
     if (verbose_flag >= 2)
         fprintf (stderr, "#\n");
 
@@ -470,18 +438,7 @@ process_file (const char *filename,
 
 int main(int argc, char *argv[])
 {
-    signed char agree = 0;
-    double lower_range = 0.0;
-    double upper_range = 0.0;
-    double *lower_bound = NULL;
-    double *upper_bound = NULL;
-
-    const signed char *minmax = NULL;
-    bool maximise_all_flag = false;
-    const bool *logarithm = NULL;
-    int nobj = 0;
-
-    /* see the man page for getopt_long for an explanation of these fields */
+    // See the man page for getopt_long for an explanation of these fields.
     static const char short_options[] = "hVvqfo:a:n:u:l:Us:b";
     static const struct option long_options[] = {
         {"help",       no_argument,       NULL, 'h'},
@@ -504,6 +461,17 @@ int main(int argc, char *argv[])
         {NULL, 0, NULL, 0} /* marks end of list */
     };
     set_program_invocation_short_name(argv[0]);
+
+    int agree = 0;
+    double lower_range = 0.0;
+    double upper_range = 0.0;
+    double * lower_bound = NULL;
+    double * upper_bound = NULL;
+
+    const int * minmax = NULL;
+    bool maximise_all_flag = false;
+    const bool * logarithm = NULL;
+    int nobj = 0;
 
     int opt; /* it's actually going to hold a char */
     int longopt_index;
@@ -589,7 +557,7 @@ int main(int argc, char *argv[])
     }
 
     if (lower_bound && upper_bound
-        && any_less_than (upper_bound, lower_bound, nobj)) {
+        && any_less_than (upper_bound, lower_bound, (dimension_t) nobj)) {
         fatal_error("upper bound must be higher than lower bound.");
     }
 
@@ -597,18 +565,18 @@ int main(int argc, char *argv[])
     double *minimum = NULL;
     double *maximum = NULL;
 
-    if (numfiles <= 1) {/* <= 0 means: No input files: read stdin.  */
+    if (numfiles <= 1) {// <= 0 means: No input files: read stdin.
         bool dominated_found =
-            process_file ((numfiles == 1) ? argv[optind] : NULL,
-                          minmax, &nobj, agree,
-                          lower_range, upper_range,
-                          lower_bound, upper_bound,
-                          &minimum, &maximum,
-                          /*check_minimum=*/true, /*check_maximum=*/true,
-                          maximise_all_flag, logarithm);
+            process_file((numfiles == 1) ? argv[optind] : NULL,
+                         minmax, &nobj, agree,
+                         lower_range, upper_range,
+                         lower_bound, upper_bound,
+                         &minimum, &maximum,
+                         /*check_minimum=*/true, /*check_maximum=*/true,
+                         maximise_all_flag, logarithm);
         free(minimum);
         free(maximum);
-        free((void*)minmax);
+        free((void *) minmax);
         return filter_flag ? EXIT_SUCCESS : dominated_found;
     }
 
@@ -618,32 +586,32 @@ int main(int argc, char *argv[])
         /* Calculate the bounds among all input files.  */
         minimum = NULL, maximum = NULL;
         for (k = 0; k < numfiles; k++)
-            file_bounds (argv[optind + k], &minimum, &maximum, &nobj);
+            file_bounds(argv[optind + k], &minimum, &maximum, &nobj);
 
         k = 0;
     } else {
         /* If the bounds were given, initialize minimum and maximum.  */
         dominated_found =
-            process_file (argv[optind], minmax, &nobj, agree,
-                          lower_range, upper_range,
-                          lower_bound, upper_bound,
-                          &minimum, &maximum,
-                          /*check_minimum=*/true, /*check_maximum=*/true,
-                          maximise_all_flag, logarithm);
+            process_file(argv[optind], minmax, &nobj, agree,
+                         lower_range, upper_range,
+                         lower_bound, upper_bound,
+                         &minimum, &maximum,
+                         /*check_minimum=*/true, /*check_maximum=*/true,
+                         maximise_all_flag, logarithm);
         k = 1;
     }
 
     for (; k < numfiles; k++) {
-        double *tmp_maximum = NULL;
-        double *tmp_minimum = NULL;
+        double * tmp_maximum = NULL;
+        double * tmp_minimum = NULL;
 
-        if (process_file (argv[optind + k], minmax, &nobj, agree,
-                          lower_range, upper_range,
-                              (lower_bound) ? lower_bound : minimum,
-                          (upper_bound) ? upper_bound : maximum,
-                          &tmp_minimum, &tmp_maximum,
-                          lower_bound != NULL, upper_bound != NULL,
-                          maximise_all_flag, logarithm))
+        if (process_file(argv[optind + k], minmax, &nobj, agree,
+                         lower_range, upper_range,
+                         (lower_bound) ? lower_bound : minimum,
+                         (upper_bound) ? upper_bound : maximum,
+                         &tmp_minimum, &tmp_maximum,
+                         lower_bound != NULL, upper_bound != NULL,
+                         maximise_all_flag, logarithm))
             dominated_found = true;
 
         /* If the bounds were given, the real minimum and maximum
