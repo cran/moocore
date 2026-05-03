@@ -1,5 +1,20 @@
 # moocore C library
 
+## 0.19
+
+ * `fpli_hv()` calculates 4D contributions as the base case, which is
+   significantly faster for more than four dimensions. (Andreia P. Guerreiro)
+ * nondominated_kung.h: New.
+ * hvapprox.c (hv_approx_rphi_fang_wang_plus): New function.
+ * Define `boolvec` as the type used for Boolean arrays to get zero-copy
+   conversion between C and Python/R and for helping auto-vectorization.  Use
+   it to replace most `bool *` arguments.
+ * `is_nondominated()` and `pareto_rank()` do not return pointers to newly
+   allocated memory to help zero-copy communication with Python/R.
+ * Add `--no-check` option to `epsilon` and `igd` executables.
+ * `pareto_rank()` is now O(n^2 log^{d-2} n) in >=4 dimensions, which is faster than the naive O(n^3).
+
+
 ## 0.18
 
  * `pareto_rank()` is now O(k * n log n) in 3D, which is faster than the naive O(n^3).

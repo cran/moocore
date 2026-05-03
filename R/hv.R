@@ -41,7 +41,9 @@
 #' former in terms of Pareto-optimality.
 #'
 #' Like most measures of unions of high-dimensional geometric objects,
-#' computing the hypervolume is #P-hard \citep{BriFri2010approx}.
+#' computing the hypervolume is #P-hard \citep{BriFri2010approx}, which means
+#' that the best possible algorithm takes an exponential time on the number of
+#' objectives or points, in the worst-case.
 #'
 #' For 2D and 3D, the algorithms used
 #' \citep{FonPaqLop06:hypervolume,BeuFonLopPaqVah09:tec} have \eqn{O(n \log n)}
@@ -57,37 +59,45 @@
 #' correctly handles weakly dominated points and has been further optimized for
 #' speed.
 #'
-#' For 5D or higher and up to 15 points, the implementation uses the
+#' For 5D or higher and up to 12 points, the implementation uses the
 #' inclusion-exclusion algorithm \citep{WuAza2001metrics}, which has \eqn{O(m
 #' 2^{n})} time and \eqn{O(n\cdot m)} space complexity, but it is very fast for
 #' such small sets.  For larger number of points, it uses a recursive algorithm
-#' \citep{FonPaqLop06:hypervolume} with \eqn{\text{HV4D}^{+}} as the base case,
-#' resulting in a \eqn{O(n^{m-2})} time complexity and \eqn{O(n)} space
-#' complexity in the worst-case.  Experimental results show that the pruning
-#' techniques used may reduce the time complexity even further.  The original
-#' proposal \citep{FonPaqLop06:hypervolume} had the HV3D algorithm as the base
-#' case, giving a time complexity of \eqn{O(n^{m-2} \log n)}.  Andreia
-#' P. Guerreiro enhanced the numerical stability of the algorithm by avoiding
-#' floating-point comparisons of partial hypervolumes.
+#' \citep{FonPaqLop06:hypervolume} that computes 4D contributions
+#' \citep{GueFon2017hv4d} as the base case, resulting in a \eqn{O(n^{m-2})}
+#' time complexity and \eqn{O(n)} space complexity in the worst-case.
+#' Experimental results show that the pruning techniques used may reduce the
+#' time complexity even further.  The original proposal
+#' \citep{FonPaqLop06:hypervolume} had the HV3D algorithm as the base case,
+#' giving a time complexity of \eqn{O(n^{m-2} \log n)}.  Andreia P. Guerreiro
+#' enhanced the numerical stability of the algorithm by avoiding floating-point
+#' comparisons of partial hypervolumes.
 #'
+#' The hypervolume of 1D inputs is defined as `max(0, ref - min(x))`.
 #'
 #' @references
 #'
 #' \insertAllCited{}
 #'
-#' @examples
+#' @doctest
+#'
+#' dat = matrix(c(5, 5, 4, 6, 2, 7, 7, 4), ncol=2, byrow=TRUE)
+#' @expect equal(38)
+#' hypervolume(dat, ref=c(10, 10))
+#' @expect equal(39)
+#' hypervolume(dat, ref=0, maximise=TRUE)
 #'
 #' data(SPEA2minstoptimeRichmond)
 #' # The second objective must be maximized
 #' # We calculate the hypervolume of the union of all sets.
+#' @expect equal(7911375.69)
 #' hypervolume(SPEA2minstoptimeRichmond[, 1:2], reference = c(250, 0),
 #'             maximise = c(FALSE, TRUE))
-#'
 #' @export
 #' @concept metrics
 hypervolume <- function(x, reference, maximise = FALSE)
 {
-  x <- as_double_matrix(x)
+  x <- as_double_matrix_1(x)
   nobjs <- ncol(x)
   if (!is.numeric(reference))
     stop("a numerical reference vector must be provided")
@@ -148,6 +158,8 @@ hypervolume <- function(x, reference, maximise = FALSE)
 #' When the input only consists of mutually nondominated points, the value of
 #' `ignore_dominated` does not change the result, but the default value is
 #' significantly faster.
+#'
+#' Like the hypervolume, computing the hypervolume contribution is #P-hard \citep{BriFri2012tcs}.
 #'
 #' The current implementation uses a \eqn{O(n\log n)} dimension-sweep
 #' algorithm for 2D.  With `ignore_dominated=TRUE`, the 3D case uses the HVC3D

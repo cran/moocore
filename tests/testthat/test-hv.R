@@ -18,23 +18,48 @@ expect_equal(test_hv_file("duplicated3.inp",
 
 })
 
-test_that("hv_contributions", {
-  hv_contributions_slow <- function(dataset, reference, maximise)
-    hypervolume(dataset, reference, maximise) -
-      sapply(1:nrow(dataset), function(x) hypervolume(dataset[-x,], reference, maximise))
+test_that("hv_dim0_dim1", {
+  x <- matrix(numeric(), nrow=5,ncol=0)
+  expect_error(hypervolume(x, ref=c()), "must have at least 1 column")
+  x <- matrix(0, ncol=1)
+  expect_equal(0.0, hypervolume(x, ref=0.0))
+  x <- matrix(runif(5), ncol=1)
+  ref <- 1.1
+  expect_equal(hypervolume(x, ref=ref), ref - min(x))
+})
 
-  hv_contributions_nondom_slow <- function(dataset, reference, maximise) {
-    nondom <- is_nondominated(dataset, maximise = maximise, keep_weakly=TRUE)
-    hvc <- numeric(nrow(dataset))
-    dataset <- dataset[nondom, , drop=FALSE]
-    hvc[nondom] <- hypervolume(dataset, reference, maximise) -
-      sapply(1:nrow(dataset), function(x) hypervolume(dataset[-x, , drop=FALSE], reference=reference, maximise=maximise))
-    hvc
-  }
+hv_contributions_slow <- function(dataset, reference, maximise = FALSE)
+  hypervolume(dataset, reference, maximise) -
+    sapply(seq_len(nrow(dataset)), function(x) hypervolume(dataset[-x, , drop = FALSE], reference, maximise))
+
+hv_contributions_nondom_slow <- function(dataset, reference, maximise = FALSE) {
+  nondom <- is_nondominated(dataset, maximise = maximise, keep_weakly=TRUE)
+  hvc <- numeric(nrow(dataset))
+  dataset <- dataset[nondom, , drop=FALSE]
+  hvc[nondom] <- hypervolume(dataset, reference, maximise) -
+    sapply(seq_len(nrow(dataset)), function(x) hypervolume(dataset[-x, , drop=FALSE], reference=reference, maximise=maximise))
+  hvc
+}
+
+test_that("hv_contributions", {
   reference = c(250,0)
   maximise = c(FALSE,TRUE)
   expect_equal(hv_contributions(SPEA2minstoptimeRichmond[, 1:2], reference = reference, maximise = maximise, ignore_dominated=FALSE),
                hv_contributions_slow(SPEA2minstoptimeRichmond[, 1:2], reference = reference, maximise = maximise))
   expect_equal(hv_contributions(SPEA2minstoptimeRichmond[, 1:2], reference = reference, maximise = maximise),
-               hv_contributions_nondom_slow(SPEA2minstoptimeRichmond[, 1:2], reference = reference, maximise = maximise))
+    hv_contributions_nondom_slow(SPEA2minstoptimeRichmond[, 1:2], reference = reference, maximise = maximise))
+
+})
+
+test_that("hv_contributions 3D", {
+
+  set.seed(42)
+  pts <- matrix(runif(30L), ncol = 3L)
+  ref <- c(2, 2, 2)
+  expect_equal(tolerance = 1e-10,
+    hv_contributions(pts, reference = ref, ignore_dominated=FALSE),
+    hv_contributions_slow(pts, ref))
+  expect_equal(tolerance = 1e-10,
+    hv_contributions(pts, reference = ref, ignore_dominated=TRUE),
+    hv_contributions_nondom_slow(pts, ref))
 })

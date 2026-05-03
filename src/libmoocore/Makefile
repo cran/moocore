@@ -1,7 +1,7 @@
 #-----------------------------------------------------------------------
 #  Makefile for moocore
 #-----------------------------------------------------------------------
-VERSION = 0.18
+VERSION = 0.19
 
 S=
 ## Quiet / verbose output:
@@ -62,6 +62,7 @@ SRCS =  avl.c                                                                \
         eafdiff.c                                                            \
         eaf_main.c                                                           \
         epsilon.c                                                            \
+        r2_exact.c                                                           \
         hv3dplus.c                                                           \
         hv4d.c                                                               \
         hv.c                                                                 \
@@ -91,19 +92,22 @@ HDRS =  avl.h                                                                \
         cvector.h                                                            \
         eaf.h                                                                \
         epsilon.h                                                            \
+        r2_exact.h                                                           \
         gcc_attribs.h                                                        \
         hv.h                                                                 \
         hvapprox.h                                                           \
         hv_priv.h                                                            \
         hv3d_priv.h                                                          \
         hv4d_priv.h                                                          \
+        hvc4d_priv.h                                                         \
         igd.h                                                                \
         io.h                                                                 \
         io_priv.h                                                            \
         libmoocore-config.h	                                             \
         mt19937/mt19937.h                                                    \
         nondominated.h                                                       \
-        pow_int.h                                                            \
+        nondominated_kung.h                                                  \
+	pow_int.h                                                            \
         rng.h                                                                \
         sort.h                                                               \
         timer.h                                                              \
@@ -199,24 +203,25 @@ $(EXE_FILES): cmdline.o io.o
 
 avl.o: avl.h
 cmdline.o: cmdline.h io.h
-dominatedsets.o: cmdline.h io.h nondominated.h sort.h avl_tiny.h epsilon.h
+dominatedsets.o: cmdline.h io.h nondominated.h epsilon.h
 eaf.o: eaf.h io.h bit_array.h cvector.h
 eaf3d.o: eaf.h io.h bit_array.h cvector.h avl.h
 eaf_main.o: cmdline.h io.h eaf.h bit_array.h cvector.h
-epsilon.o: cmdline.h io.h epsilon.h nondominated.h sort.h avl_tiny.h
-hv.o: hv.h hv_priv.h hv4d_priv.h sort.h libmoocore-config.h
+epsilon.o: cmdline.h io.h nondominated.h epsilon.h
+hv.o: hv.h hv_priv.h hvc4d_priv.h sort.h libmoocore-config.h
 hv3dplus.o: hv_priv.h sort.h hv3d_priv.h avl_tiny.h
 hv4d.o: hv4d_priv.h hv_priv.h sort.h
-hv_contrib.o: hv.h libmoocore-config.h nondominated.h sort.h avl_tiny.h
+hv_contrib.o: hv.h libmoocore-config.h nondominated.h
 hvapprox.o: hvapprox.h pow_int.h rng.h mt19937/mt19937.h
 hvc3d.o: hv_priv.h sort.h hv3d_priv.h avl_tiny.h
-igd.o: cmdline.h io.h igd.h nondominated.h sort.h avl_tiny.h pow_int.h
+igd.o: cmdline.h io.h nondominated.h igd.h pow_int.h
 io.o: io.h io_priv.h
-main-hv.o: cmdline.h io.h hv.h timer.h libmoocore-config.h nondominated.h sort.h avl_tiny.h hvapprox.h
+main-hv.o: cmdline.h io.h hv.h timer.h libmoocore-config.h nondominated.h hvapprox.h
 main-hvapprox.o: cmdline.h io.h hvapprox.h
-ndsort.o: cmdline.h io.h nondominated.h sort.h avl_tiny.h hv.h
-nondominated.o : cmdline.h io.h nondominated.h avl_tiny.h
-pareto.o: nondominated.h sort.h avl_tiny.h
+ndsort.o: cmdline.h io.h nondominated.h hv.h
+nondominated.h: avl_tiny.h nondominated_kung.h
+nondominated.o : cmdline.h io.h nondominated.h
+pareto.o: nondominated.h
 rng.o: rng.h mt19937/mt19937.h ziggurat_constants.h
 timer.o: timer.h
 $(OBJS): common.h gcc_attribs.h config.h maxminclamp.h
