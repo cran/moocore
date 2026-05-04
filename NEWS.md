@@ -1,3 +1,9 @@
+# moocore 0.3.1
+
+ * Separate documentation of `pareto_rank()` to its own page.
+ * Fix potential undefined behavior in `is_nondominated()`.
+
+
 # moocore 0.3.0
 
  * `r2_exact()` implements the exact computation of the R2 indicator for bi-objective solution sets.

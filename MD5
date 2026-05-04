@@ -1,6 +1,6 @@
-fc9b4529419276d5416a64f3301a499e *DESCRIPTION
+1d77e4d8e59b05e0f39e925c734f0aa9 *DESCRIPTION
 cd2e604d05c7a31aafc22ab0f3f1189d *NAMESPACE
-9f18777206e59bdbae4b171130a4f86c *NEWS.md
+f85228e762c99634df59aea2dd816b2b *NEWS.md
 2d31aceaf500b7d9b616a410fac5dc65 *R/eaf.R
 e368c66cf0045b8fb19bc098f7fcba09 *R/eafdiff.R
 828a8a7bab792537ddae962be44aa91f *R/epsilon.R
@@ -10,7 +10,7 @@ c548820e1ab69291cf13443ae1c03182 *R/hv_approx.R
 af1d086bb18eaafa899901ccd76ce2e7 *R/igd.R
 3bbe5542908704107f5240de6e9721ea *R/largest_eafdiff.R
 5baf4305ff8bcf0bae68f92a8011f827 *R/moocore-package.R
-f9e274a3ce3b3f8c972b7970482d262f *R/nondominated.R
+46aa29d9634bafac4a0ec7985dbd6683 *R/nondominated.R
 789d525d3e98d0357ead83cb4b3fe052 *R/normalise.R
 021841be2714edc1d0e0fd10e1e9fb60 *R/r2.R
 e109921899d84fcd331ca315aed88e85 *R/rbind_datasets.R
@@ -20,7 +20,7 @@ e109921899d84fcd331ca315aed88e85 *R/rbind_datasets.R
 b1eb0b3ba695e668df1a67a2cc98f548 *R/whv.R
 864043835b30246f8d76259ce4a784cd *R/zzz.R
 9b94c738ddc644c1b9ba951a9ebb1f0c *README.md
-cbf53ed2eb0971be5ed8dc1ab4a031f4 *build/partial.rdb
+24905694eaad28a9f898a7d6632829b0 *build/partial.rdb
 53f1b5491216952576aaa6e2bbaff6b4 *cleanup
 1c38bb40df3f939a3d506de57fadf6f9 *data/CPFs.rda
 85bae51ecf771dbb34c15360c8f35aed *data/HybridGA.rda
@@ -65,8 +65,9 @@ ae37bc659ec343b7f70cc1b18b225ab3 *man/igd.Rd
 d2ee1d40c92a34dcf3913af879bd4e08 *man/largest_eafdiff.Rd
 72caa36974a5ed1e0f67d28f6cfcce3e *man/macros/macros.Rd
 18a3278f1d85f1a8f25fbeaae6d5c364 *man/moocore-package.Rd
-0c6b3d455bc249ff31580ef66db5aa92 *man/nondominated.Rd
+8232841c8915e36921145bab9af50bf2 *man/nondominated.Rd
 af1c546cde7c30e29803c2354205ad5e *man/normalise.Rd
+d7d281affbd63dbbd301246926318cc4 *man/pareto_rank.Rd
 2fbd2737e64f0fa31fcaa4703ea830c7 *man/r2_exact.Rd
 9bf3a05f18ac71afc985154b542f5bf0 *man/rbind_datasets.Rd
 56faaa3289436800a9cc655b96dbe90e *man/read_datasets.Rd
@@ -85,8 +86,8 @@ f314aecfb1c088a144d3fb5919a86685 *src/init.c
 3bde706872b9af6f33b7d2e8e26cac37 *src/install.libs.R
 2e30beddc4e2c994e3ea38f3770f5180 *src/libmoocore/COPYRIGHTS
 249f37701ec2216105ccd3fc361f6543 *src/libmoocore/LICENSE
-5eec9a2f8ffc73be7211c925b30817dc *src/libmoocore/Makefile
-1a02b227425880c3d60465eb999bf82f *src/libmoocore/NEWS.md
+ea52bb14ff142f464eaf47e4c0bdf4cd *src/libmoocore/Makefile
+ab94629ae507db36383fc25e6082250c *src/libmoocore/NEWS.md
 233bb439a2ead57e8f84e95fdacfae26 *src/libmoocore/README.md
 c37cac28c1a0385210564c831a9c0563 *src/libmoocore/avl.c
 c5015ba508dadf1287d477aa3c74dca1 *src/libmoocore/avl.h
@@ -137,7 +138,7 @@ dc36eff22cf82aed36d747b527ef13f8 *src/libmoocore/mt19937/mt19937.c
 47367d54f8b347bb45a253fcf90be207 *src/libmoocore/ndsort.c
 2f46f45d034d3ad133ca41e46f8d47a8 *src/libmoocore/nondominated.c
 8adbb4ad9d1a70e5dde6ad4f782774f0 *src/libmoocore/nondominated.h
-52ba1bf8673794ebe268adca0d7c9d45 *src/libmoocore/nondominated_kung.h
+b668727987d28ebbd191daf8979b35d1 *src/libmoocore/nondominated_kung.h
 ef721d8e3c8476e2e026d01909b17ed9 *src/libmoocore/pareto.c
 940d60845c7a139666c38074ae669057 *src/libmoocore/pow_int.h
 1dcde1fa94fa832e1870d194df37ab80 *src/libmoocore/r2_exact.c
@@ -168,7 +169,8 @@ abb5c533f3fbec77875e22a7c01e9e66 *tests/testthat/sph.S.txt
 8ff362e6ea9d38a380ab71cca1ca4c06 *tests/testthat/test-doctest-hv_contributions.R
 3a162fa231c2a8d264b6c27fd79d7f17 *tests/testthat/test-doctest-hypervolume.R
 06486fc69ac93783e83ff045984eb15d *tests/testthat/test-doctest-igd.R
-75533d8604eb0487aab324e1eab8970f *tests/testthat/test-doctest-is_nondominated.R
+7c7cb2fc5a47b78d8105835a4ba85f8f *tests/testthat/test-doctest-is_nondominated.R
+4e0f46d002059cd078b5a1a5d349435b *tests/testthat/test-doctest-pareto_rank.R
 66255ea90b2b6acab5be4650e006f9f9 *tests/testthat/test-doctest-r2_exact.R
 91c71409cab52fbf0d2b6fbd8b7f4403 *tests/testthat/test-doctest-vorob_t.R
 b29ade836e658b9f4665bc37b4fa23dd *tests/testthat/test-doctest-whv_hype.R
