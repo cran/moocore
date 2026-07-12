@@ -27,7 +27,7 @@
 #' uses the best-known \eqn{O(n \log n)} dimension-sweep algorithm
 #' \citep{KunLucPre1975jacm} for \eqn{m \leq 3}. For \eqn{m \geq 4}, functions
 #' `is_nondominated()` and `filter_dominated()` use the best-known \eqn{O(n
-#' \log^{m-2} n)} algorithm \citep{KunLucPre1975jacm} when \eqn{n > 16}, and
+#' \log^{m-2} n)} algorithm \citep{KunLucPre1975jacm} when \eqn{n > `r moocore:::.libmoocore_constants[["KUNG_SMALL_THRESHOLD"]]`}, and
 #' the naive \eqn{O(m n^2)} algorithm otherwise.  Function `any_dominated()`
 #' always uses the naive algorithm for \eqn{m \geq 4}.
 #'
@@ -77,7 +77,8 @@ is_nondominated <- function(x, maximise = FALSE, keep_weakly = FALSE)
 {
   x <- as_double_matrix_1(x)
   nobjs <- ncol(x)
-  # FIXME: Implement this in is_nondominated_C
+  keep_weakly <- as.logical(keep_weakly)
+  maximise <- as.logical(maximise)
   if (nobjs == 1L) { # Handle single-objective
     if (keep_weakly) {
       best <- if (maximise) max(x) else min(x)
@@ -88,10 +89,11 @@ is_nondominated <- function(x, maximise = FALSE, keep_weakly = FALSE)
       return(nondom)
     }
   }
+  check_dimension_max(nobjs, .libmoocore_constants[["MOOCORE_DIMENSION_MAX"]])
   .Call(is_nondominated_C,
     x,
-    as.logical(keep_weakly),
-    rep_len(as.logical(maximise), nobjs))
+    keep_weakly,
+    rep_len(maximise, nobjs))
 }
 
 #' @rdname nondominated
@@ -112,6 +114,7 @@ any_dominated <- function(x, maximise = FALSE, keep_weakly = FALSE)
   if (keep_weakly) # FIXME: Do this in C.
     x <- x[!duplicated(x), , drop = FALSE]
   nobjs <- ncol(x)
+  check_dimension_max(nobjs, .libmoocore_constants[["MOOCORE_DIMENSION_MAX"]])
   .Call(any_dominated_C,
     x,
     rep_len(as.logical(maximise), nobjs))
@@ -187,13 +190,14 @@ any_dominated <- function(x, maximise = FALSE, keep_weakly = FALSE)
 pareto_rank <- function(x, maximise = FALSE)
 {
   x <- as_double_matrix_1(x)
-  if (ncol(x) == 1L) { # Handle single-objective
+  nobjs <- ncol(x)
+  if (nobjs == 1L) { # Handle single-objective
     x <- as.vector(x)
     if (maximise)
       x <- -x
-    # FIXME: Can we do this faster?
-    return(match(x, sort(unique(x))))
+    return(match(x, sort(unique(x)))) # FIXME: Can we do this faster?
   }
+  check_dimension_max(nobjs, .libmoocore_constants[["MOOCORE_DIMENSION_MAX"]])
   x <- transform_maximise(x, maximise)
   .Call(pareto_ranking_C, t(x))
 }
